@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Canlı Duygu Analizi</title>
+    <style>
+        :root{
+            --bg: #0b1020;
+            --panel: #0f172a;
+            --card: #111827;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --accent: #00e5ff;
+            --accent-2: #8b5cf6;
+        }
+        *{ box-sizing: border-box; }
+        body {
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            text-align: center;
+            color: var(--text);
+            background:
+                radial-gradient(1200px 600px at 10% -20%, #0b3a4a 0%, transparent 60%),
+                radial-gradient(800px 400px at 110% 10%, #2a104a 0%, transparent 60%),
+                linear-gradient(180deg, var(--bg), #060914 60%);
+            min-height: 100vh;
+            margin: 0;
+            padding-bottom: 32px;
+        }
+        h1 {
+            margin: 20px 0 8px;
+            background: linear-gradient(90deg, var(--accent), #66e0ff, var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 20px rgba(0,229,255,0.25);
+        }
+        .live {
+            margin-top: 15px;
+            border-radius: 16px;
+            border: 0;
+            box-shadow: 0 0 0 1px rgba(0,229,255,0.18), 0 18px 40px -20px rgba(0,229,255,0.45);
+        }
+        #panel {
+            margin: 24px auto;
+            max-width: 1200px;
+            text-align: left;
+            padding: 0 16px;
+        }
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .btn{
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+            color: var(--text);
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 8px 20px -12px rgba(0,0,0,0.5);
+            transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+        }
+        .btn:hover{ transform: translateY(-1px); box-shadow: 0 12px 28px -16px rgba(0,0,0,0.7); }
+        .btn:active{ transform: translateY(0); }
+        .btn-primary{ border-color: rgba(0,229,255,0.25); background: linear-gradient(180deg, rgba(0,229,255,0.12), rgba(0,229,255,0.08)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 8px 20px -12px rgba(0,229,255,0.5); }
+        .btn-green{ border-color: rgba(34,197,94,0.25); background: linear-gradient(180deg, rgba(34,197,94,0.18), rgba(34,197,94,0.10)); }
+        .btn-red{ border-color: rgba(239,68,68,0.25); background: linear-gradient(180deg, rgba(239,68,68,0.18), rgba(239,68,68,0.10)); }
+        #count{ color: var(--muted); }
+
+        #cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 18px;
+            margin-top: 18px;
+        }
+        .card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--card);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px -18px rgba(0,0,0,0.6);
+            overflow: hidden;
+            transform: translateY(8px);
+            animation: fadeInUp .6s ease both;
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+        .card:hover{
+            transform: translateY(0) scale(1.01);
+            box-shadow: 0 20px 48px -18px rgba(0,229,255,0.25);
+            border-color: rgba(0,229,255,0.18);
+        }
+        .card img { width: 100%; height: 180px; object-fit: cover; border: 0; border-radius: 0; filter: saturate(1.05) contrast(1.02); }
+        .card .body { padding: 12px 14px 14px; }
+        .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+        .title { font-weight: 600; color: #f3f4f6; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: rgba(0,229,255,0.14);
+            color: #b3f7ff;
+            border: 1px solid rgba(0,229,255,0.25);
+            border-radius: 999px;
+            font-size: 12px;
+            margin-left: 6px;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+        }
+        .emotions { margin-top: 10px; }
+        .emo-row { display:flex; align-items:center; gap:10px; font-size:12px; color:#cbd5e1; }
+        .emo-row .label{ width: 88px; flex: 0 0 88px; color:#a3b2c7; }
+        .bar { flex:1; background: rgba(255,255,255,0.06); height:8px; border-radius:999px; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.35); }
+        .bar > span { display:block; height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #66e0ff); border-radius:999px; transition: width .8s cubic-bezier(.22,.9,.31,1); box-shadow: 0 0 12px rgba(0,229,255,0.35); }
+        .grid { display:grid; grid-template-columns: 1fr; gap:8px; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(8px); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🎥 Canlı Duygu Analizi</h1>
+    <img class="live" src="{{ url_for('video_feed') }}" width="640" height="480" alt="Canlı Yayın">
+
+    <div id="panel">
+        <div class="toolbar">
+            <button id="btnStart" class="btn btn-green">Algılamayı Aç</button>
+            <button id="btnStop" class="btn btn-red">Algılamayı Kapat</button>
+            <button id="refresh" class="btn btn-primary">Paneli Yenile</button>
+            <span id="status" class="meta"></span>
+            <span id="count" class="meta"></span>
+        </div>
+        <div id="realtime" class="card" style="margin-top:16px;">
+            <div class="body">
+                <div class="title">Anlık Duygular <span id="rt-main" class="badge">-</span></div>
+                <div class="meta" id="rt-meta">Durum: -</div>
+                <div id="rt-bars" class="emotions grid"></div>
+            </div>
+        </div>
+        <div id="cards"></div>
+    </div>
+
+    <script>
+        const trEmo = { happy: 'Mutlu', sad: 'Üzgün', angry: 'Kızgın', surprise: 'Şaşırmış', fear: 'Korkmuş', disgust: 'Tiksinmiş', neutral: 'Nötr' };
+        const emoColors = {
+            angry: '#ef4444',
+            fear: '#a855f7',
+            disgust: '#22c55e',
+            sad: '#3b82f6',
+            surprise: '#f59e0b',
+            happy: '#facc15',
+            neutral: '#9ca3af'
+        };
+        function pct(n){ return typeof n === 'number' ? n.toFixed(1) : '0.0'; }
+        let rtTimer = null;
+
+        async function fetchJsonIfExists(url){
+            try{
+                const res = await fetch(url);
+                if(!res.ok) return null;
+                return await res.json();
+            }catch(e){ return null; }
+        }
+
+        async function loadPanel(){
+            const res = await fetch('/captured');
+            const images = await res.json();
+            const cards = document.getElementById('cards');
+            const count = document.getElementById('count');
+            cards.innerHTML = '';
+            count.textContent = `${images.length} kayıt`;
+
+            // Yeni -> Eski sıralama (dosya adında timestamp var)
+            images.sort((a,b)=> a < b ? 1 : -1);
+
+            for (let i=0;i<images.length;i++){
+                const imgName = images[i];
+                const base = imgName.replace(/\.jpg$/i, '');
+                const jsonUrl = `/static/captured/${base}.json`;
+                const data = await fetchJsonIfExists(jsonUrl);
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.animationDelay = `${i * 0.05}s`;
+
+                const img = document.createElement('img');
+                img.src = `/static/captured/${imgName}`;
+                img.alt = base;
+                card.appendChild(img);
+
+                const body = document.createElement('div');
+                body.className = 'body';
+
+                const title = document.createElement('div');
+                title.className = 'title';
+
+                let main = 'Bilinmiyor';
+                let dangerScore = 0;
+                let emotions = null;
+                let timestamp = '';
+                let pid = '';
+                if (data && data.emotions){
+                    emotions = data.emotions;
+                    timestamp = data.timestamp || '';
+                    pid = data.id || '';
+                    main = Object.keys(emotions).reduce((a,b)=> emotions[a] > emotions[b] ? a : b);
+                    dangerScore = (emotions.angry||0) + (emotions.fear||0) + (emotions.disgust||0);
+                } else {
+                    // JSON yoksa, dosya adındaki parçalardan id ve zamanı tahmin et (id_timestamp)
+                    const parts = base.split('_');
+                    pid = parts[0] || '';
+                    timestamp = parts[1] || '';
+                }
+
+                const badgeColor = emoColors[main] || '#00e5ff';
+                const badge = `<span class="badge" style="border-color:${badgeColor}; color:${badgeColor}; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 0 14px ${badgeColor}33;">${trEmo[main] || main}</span>`;
+                title.innerHTML = `Kişi ID: ${pid || '-'} ${badge}`;
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.textContent = `Zaman: ${timestamp} ${emotions ? `• Tehlike Skoru: ${pct(dangerScore)}%` : ''}`;
+
+                const emotionsEl = document.createElement('div');
+                emotionsEl.className = 'emotions grid';
+
+                if (emotions){
+                    const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
+                    order.forEach(k => {
+                        if (typeof emotions[k] === 'undefined') return;
+                        const row = document.createElement('div');
+                        row.className = 'emo-row';
+                        const label = document.createElement('span');
+                        label.className = 'label';
+                        label.textContent = trEmo[k] || k;
+                        const bar = document.createElement('div');
+                        bar.className = 'bar';
+                        const fill = document.createElement('span');
+                        const color = emoColors[k] || '#66e0ff';
+                        fill.style.background = color;
+                        fill.style.boxShadow = `0 0 12px ${color}66`;
+                        // Başta 0, sonra hedefe animasyon
+                        fill.style.width = '0%';
+                        const target = Math.min(100, Math.max(0, emotions[k]));
+                        requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ fill.style.width = target + '%'; }); });
+                        bar.appendChild(fill);
+                        const value = document.createElement('span');
+                        value.textContent = pct(emotions[k]) + '%';
+                        row.appendChild(label);
+                        row.appendChild(bar);
+                        row.appendChild(value);
+                        emotionsEl.appendChild(row);
+                    });
+                }
+
+                body.appendChild(title);
+                body.appendChild(meta);
+                body.appendChild(emotionsEl);
+                card.appendChild(body);
+                cards.appendChild(card);
+            }
+        }
+
+        async function setDetection(enabled){
+            await fetch('/set_detection', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({enabled}) });
+            await updateStatus();
+        }
+
+        function startRealtime(){
+            if (rtTimer === null){
+                rtTimer = setInterval(loadRealtime, 1000);
+                // Hemen bir kez çek
+                loadRealtime();
+            }
+        }
+        function stopRealtime(){
+            if (rtTimer !== null){
+                clearInterval(rtTimer);
+                rtTimer = null;
+            }
+        }
+        async function updateStatus(){
+            const res = await fetch('/status');
+            const data = await res.json();
+            const st = document.getElementById('status');
+            st.textContent = `Algılama: ${data.enabled ? 'Açık' : 'Kapalı'}`;
+            if (data.enabled){
+                startRealtime();
+            } else {
+                stopRealtime();
+            }
+        }
+
+        async function loadRealtime(){
+            const res = await fetch('/current_emotions');
+            const data = await res.json();
+            const rtMain = document.getElementById('rt-main');
+            const rtMeta = document.getElementById('rt-meta');
+            const rtBars = document.getElementById('rt-bars');
+            rtBars.innerHTML = '';
+
+            const enabled = data.enabled;
+            const ts = data.timestamp || '';
+            const em = data.emotions || null;
+            const main = data.main_emotion || '-';
+            const dsc = data.danger_score || 0;
+
+            rtMain.textContent = trEmo[main] || main;
+            rtMeta.textContent = `Durum: ${enabled ? 'Açık' : 'Kapalı'} • Zaman: ${ts} • Tehlike Skoru: ${pct(dsc)}%`;
+
+            if (em){
+                const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
+                order.forEach(k => {
+                    if (typeof em[k] === 'undefined') return;
+                    const row = document.createElement('div');
+                    row.className = 'emo-row';
+                    const label = document.createElement('span');
+                    label.className = 'label';
+                    label.textContent = trEmo[k] || k;
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    const fill = document.createElement('span');
+                    const color = emoColors[k] || '#66e0ff';
+                    fill.style.background = color;
+                    fill.style.boxShadow = `0 0 12px ${color}66`;
+                    fill.style.width = '0%';
+                    const target = Math.min(100, Math.max(0, em[k]));
+                    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ fill.style.width = target + '%'; }); });
+                    bar.appendChild(fill);
+                    const value = document.createElement('span');
+                    value.textContent = pct(em[k]) + '%';
+                    row.appendChild(label);
+                    row.appendChild(bar);
+                    row.appendChild(value);
+                    rtBars.appendChild(row);
+                });
+            }
+        }
+
+        document.getElementById('refresh').onclick = loadPanel;
+        document.getElementById('btnStart').onclick = () => setDetection(true);
+        document.getElementById('btnStop').onclick = () => setDetection(false);
+        // İlk yükleme
+        updateStatus();
+        loadPanel();
+    </script>
+</body>
+</html>
