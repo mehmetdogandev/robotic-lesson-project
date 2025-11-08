@@ -217,6 +217,49 @@ def esp_command():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/esp_status', methods=['GET'])
+def esp_status():
+    """Get current ESP camera status and settings.
+    
+    Query param: ?ip=<esp_ip>
+    """
+    try:
+        ip = request.args.get('ip')
+        if not ip:
+            ip = camera_stream.remote_ip
+        if not ip:
+            return jsonify({"error": "No ESP ip configured or provided"}), 400
+        
+        status, settings = esp_client.get_status(ip)
+        if status == 200 and settings:
+            return jsonify({"status": "success", "settings": settings}), 200
+        else:
+            return jsonify({"error": "Failed to get ESP status", "status_code": status}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/esp_apply_preset', methods=['POST'])
+def esp_apply_preset():
+    """Apply optimal camera settings preset for emotion analysis.
+    
+    JSON body: {"ip": "optional ip"}
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        ip = payload.get('ip') or camera_stream.remote_ip
+        if not ip:
+            return jsonify({"error": "No ESP ip configured or provided"}), 400
+        
+        success = esp_client.apply_emotion_analysis_preset(ip)
+        if success:
+            return jsonify({"status": "success", "message": "Optimal settings applied"}), 200
+        else:
+            return jsonify({"error": "Some settings failed to apply"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/set_detection', methods=['POST'])
 def set_detection():
     """Toggle detection on/off."""
