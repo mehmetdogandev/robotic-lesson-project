@@ -122,10 +122,13 @@
 </head>
 <body>
     <h1>🎥 Canlı Duygu Analizi</h1>
-    <img class="live" src="{{ url_for('video_feed') }}" width="640" height="480" alt="Canlı Yayın">
+    <img id="liveImg" class="live" src="{{ url_for('video_feed') }}" width="640" height="480" alt="Canlı Yayın">
 
     <div id="panel">
         <div class="toolbar">
+            <input id="ipInput" type="text" placeholder="Kamera IP (örn. 10.64.220.72)" value="10.64.220.72" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);width:200px">
+            <button id="btnConnect" class="btn btn-primary">Bağlan</button>
+            <button id="btnDisconnect" class="btn">Yerel Kamera</button>
             <button id="btnStart" class="btn btn-green">Algılamayı Aç</button>
             <button id="btnStop" class="btn btn-red">Algılamayı Kapat</button>
             <button id="refresh" class="btn btn-primary">Paneli Yenile</button>
@@ -341,6 +344,22 @@
         document.getElementById('refresh').onclick = loadPanel;
         document.getElementById('btnStart').onclick = () => setDetection(true);
         document.getElementById('btnStop').onclick = () => setDetection(false);
+        // Connect / Disconnect to remote ESP32 camera by IP
+        function connectStream(){
+            const ip = document.getElementById('ipInput').value.trim();
+            if (!ip) return alert('Lütfen bir IP girin');
+            const img = document.getElementById('liveImg');
+            img.src = `/video_feed?ip=${encodeURIComponent(ip)}`;
+            document.getElementById('status').textContent = `Bağlanıyor: ${ip}`;
+        }
+        function disconnectStream(){
+            // revert to local/default camera (server-side)
+            const img = document.getElementById('liveImg');
+            img.src = `{{ url_for('video_feed') }}`;
+            document.getElementById('status').textContent = `Yerel kameraya geçildi`;
+        }
+        document.getElementById('btnConnect').onclick = connectStream;
+        document.getElementById('btnDisconnect').onclick = disconnectStream;
         // İlk yükleme
         updateStatus();
         loadPanel();
