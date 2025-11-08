@@ -13,8 +13,8 @@
 #include "esp_camera.h"
 #include "deneyap.h"  // Deneyap Geliştirme Kartı pin tanimlamalari
 
-const char* ssid = "Mehmet";      // Baglanti kurulacak Wi-Fi agi adi
-const char* password = "aaaa1111";  // Baglanti kurulacak Wi-Fi agi sifresi
+const char* ssid = "Memet";      // Baglanti kurulacak Wi-Fi agi adi
+const char* password = "aaaa11112";  // Baglanti kurulacak Wi-Fi agi sifresi
 
 void cameraInit(void);
 void startCameraServer();
