@@ -1,22 +1,22 @@
 """
-Yapılandırma sabitleri ve global ayarlar
+Configuration constants and global settings
 """
 import os
 
-# Dizin yapılandırması
+# Directory configuration
 CAPTURE_DIR = "static/captured"
 os.makedirs(CAPTURE_DIR, exist_ok=True)
 
-# Analiz parametreleri
-ANALYSIS_INTERVAL = 5     # her 5 karede bir analiz yap
-HISTORY_SIZE = 3           # son 3 analizin ortalamasını al
-DANGER_THRESHOLD = 70     # tehlike eşiği (angry+fear+disgust toplamı)
-FACE_SIMILARITY_THRESHOLD = 0.6  # Yüz benzerlik eşiği (0-1 arası, düşük=daha sıkı)
+# Analysis parameters
+ANALYSIS_INTERVAL = 5     # analyze every 5 frames
+HISTORY_SIZE = 3           # average of last 3 analyses
+DANGER_THRESHOLD = 70     # danger threshold (angry+fear+disgust sum)
+FACE_SIMILARITY_THRESHOLD = 0.6  # face similarity threshold (0-1 range, lower=stricter)
 
-# Algılama durumu
+# Detection status
 DETECTION_ENABLED = True
 
-# Duygu etiketleri (Türkçe)
+# Emotion labels (Turkish)
 emotion_labels = {
     "happy": "Mutlu",
     "sad": "Uzgun",
@@ -27,7 +27,7 @@ emotion_labels = {
     "neutral": "Notr"
 }
 
-# Son durum verisi
+# Latest state data
 latest_state = {
     "timestamp": None,
     "emotions": None,

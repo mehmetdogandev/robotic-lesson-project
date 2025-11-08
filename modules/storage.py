@@ -1,5 +1,5 @@
 """
-Dosya kaydetme, yükleme ve yönetim işlemleri
+File saving, loading, and management operations
 """
 import os
 import json
@@ -9,12 +9,12 @@ from modules.face_analysis import get_face_embedding, register_dangerous_person
 
 
 def save_dangerous_person(person_id, timestamp, frame, emotions):
-    """Tehlikeli kişinin görüntüsünü ve bilgilerini kaydeder."""
-    # Görüntüyü kaydet
+    """Saves the image and information of a dangerous person."""
+    # Save image
     img_path = os.path.join(CAPTURE_DIR, f"{person_id}_{timestamp}.jpg")
     cv2.imwrite(img_path, frame)
     
-    # Verileri JSON olarak kaydet
+    # Save data as JSON
     data = {
         "id": person_id,
         "timestamp": timestamp,
@@ -28,7 +28,7 @@ def save_dangerous_person(person_id, timestamp, frame, emotions):
 
 
 def load_existing_faces():
-    """Önceden kaydedilmiş tehlikeli kişileri yükler."""
+    """Loads previously registered dangerous persons."""
     for filename in os.listdir(CAPTURE_DIR):
         if filename.endswith(".json"):
             json_path = os.path.join(CAPTURE_DIR, filename)
@@ -36,7 +36,7 @@ def load_existing_faces():
                 data = json.load(f)
                 person_id = data["id"]
                 
-                # İlgili görüntüyü bul
+                # Find the related image
                 img_filename = filename.replace(".json", ".jpg")
                 img_path = os.path.join(CAPTURE_DIR, img_filename)
                 
@@ -45,11 +45,11 @@ def load_existing_faces():
                     embedding = get_face_embedding(img)
                     if embedding is not None:
                         register_dangerous_person(person_id, embedding)
-                        print(f"✓ Kayıtlı tehlikeli kişi yüklendi: {person_id}")
+                        print(f"✓ Registered dangerous person loaded: {person_id}")
 
 
 def get_captured_images():
-    """Kaydedilen tehlikeli kişi görüntülerini listeler."""
+    """Lists captured images of dangerous persons."""
     files = os.listdir(CAPTURE_DIR)
     images = [f for f in files if f.endswith(".jpg")]
     return images
