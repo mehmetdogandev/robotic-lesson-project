@@ -13,6 +13,123 @@ emotion_history = deque(maxlen=HISTORY_SIZE)
 registered_dangerous_faces = {}
 
 
+# -----------------------
+# Preprocessing Helpers
+# -----------------------
+import cv2
+import numpy as _np
+import mediapipe as _mp
+
+_mp_face_mesh = _mp.solutions.face_mesh
+
+def preprocess_face(image, bbox=None, output_size=(224, 224), clahe=True):
+    """Detect/align/crop a face and apply CLAHE + normalization.
+
+    Returns an RGB float32 numpy array normalized for pretrained backbones
+    or None if no face/crop could be produced.
+    """
+    img = image.copy()
+    h, w = img.shape[:2]
+
+    # If bbox not provided, try to detect face with MediaPipe (fast single-shot)
+    if bbox is None:
+        with _mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1) as fm:
+            results = fm.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            if not results.multi_face_landmarks:
+                return None
+            lm = results.multi_face_landmarks[0].landmark
+            xs = [int(p.x * w) for p in lm]
+            ys = [int(p.y * h) for p in lm]
+            x1, x2 = max(min(xs) - 20, 0), min(max(xs) + 20, w)
+            y1, y2 = max(min(ys) - 20, 0), min(max(ys) + 20, h)
+            bbox = (x1, y1, x2 - x1, y2 - y1)
+
+    x, y, ww, hh = bbox
+    face = img[y:y + hh, x:x + ww]
+    if face.size == 0:
+        return None
+
+    # Resize to model input
+    face = cv2.resize(face, output_size, interpolation=cv2.INTER_LINEAR)
+
+    # Apply CLAHE on L channel for illumination normalization
+    if clahe:
+        lab = cv2.cvtColor(face, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        clahe_op = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        l = clahe_op.apply(l)
+        lab = cv2.merge((l, a, b))
+        face = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+    # Convert to RGB and normalize to imagenet stats
+    face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB).astype(_np.float32) / 255.0
+    mean = _np.array([0.485, 0.456, 0.406], dtype=_np.float32)
+    std = _np.array([0.229, 0.224, 0.225], dtype=_np.float32)
+    face_rgb = (face_rgb - mean) / std
+    return face_rgb
+
+
+# -----------------------
+# Temporal Smoothing
+# -----------------------
+class TemporalSmoother:
+    """Simple temporal smoother for emotion probability vectors.
+
+    Keeps last N probability vectors and returns an EMA-smoothed vector.
+    Use a single global smoother for overall frame smoothing, or create per-track
+    smoothers when face tracking is available.
+    """
+    def __init__(self, maxlen=8, ema_alpha=0.6):
+        self.maxlen = maxlen
+        self.ema_alpha = ema_alpha
+        self.deque = deque(maxlen=maxlen)
+
+    def update(self, prob_vector):
+        """Add a new probability vector (list/np.array) and return smoothed vector."""
+        arr = _np.array(prob_vector, dtype=_np.float32)
+        if arr.sum() <= 0:
+            # avoid invalid vectors
+            return None
+        # normalize
+        arr = arr / (arr.sum() + 1e-8)
+        self.deque.append(arr)
+        return self.get_smoothed()
+
+    def get_smoothed(self):
+        if not self.deque:
+            return None
+        ema = _np.array(self.deque[0], dtype=_np.float32).copy()
+        for v in list(self.deque)[1:]:
+            ema = self.ema_alpha * v + (1.0 - self.ema_alpha) * ema
+        # normalize
+        ema = ema / (ema.sum() + 1e-8)
+        return ema
+
+
+def emotions_dict_to_vector(emotions_dict, ordered_keys=None):
+    """Convert DeepFace emotions dict to a probability vector in a stable order.
+
+    If ordered_keys not provided, uses the typical DeepFace order.
+    """
+    if ordered_keys is None:
+        ordered_keys = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+    vec = []
+    for k in ordered_keys:
+        vec.append(float(emotions_dict.get(k, 0.0)))
+    # convert to probabilities (sum may not equal 100 due to averaging)
+    arr = _np.array(vec, dtype=_np.float32)
+    s = arr.sum()
+    if s <= 0:
+        return arr
+    return arr / (s + 1e-8)
+
+
+def vector_to_emotions_dict(vec, ordered_keys=None):
+    if ordered_keys is None:
+        ordered_keys = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+    return {k: float(vec[i]) for i, k in enumerate(ordered_keys)}
+
+
 def get_face_embedding(frame):
     """Extracts face embedding (vector) from a frame."""
     try:
@@ -28,14 +145,11 @@ def is_registered_dangerous_person(current_embedding):
         return False, None
     
     for person_id, saved_embedding in registered_dangerous_faces.items():
-        # Calculate cosine similarity
         similarity = np.dot(current_embedding, saved_embedding) / (
             np.linalg.norm(current_embedding) * np.linalg.norm(saved_embedding)
         )
-        
         if similarity > FACE_SIMILARITY_THRESHOLD:
-            return True, person_id  
-    
+            return True, person_id
     return False, None
 
 

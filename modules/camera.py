@@ -12,6 +12,7 @@ from modules.face_analysis import (
     analyze_emotions, get_average_emotions, calculate_danger_score,
     get_face_embedding, is_registered_dangerous_person, register_dangerous_person
 )
+from modules.face_analysis import TemporalSmoother, emotions_dict_to_vector, vector_to_emotions_dict, preprocess_face
 from modules.storage import save_dangerous_person
 
 # MediaPipe Face Mesh
@@ -26,6 +27,8 @@ class CameraStream:
     def __init__(self):
         self.detection_enabled = True
         self.last_danger_check = 0
+        # temporal smoother for emotion probabilities (single-stream fallback)
+        self.emotion_smoother = TemporalSmoother(maxlen=8, ema_alpha=0.6)
     
     def set_detection(self, enabled):
         """Sets detection status."""
@@ -116,6 +119,14 @@ class CameraStream:
             
             # Calculate average emotions
             avg_emotions, main_emotion = get_average_emotions()
+
+            # Apply temporal smoothing to the averaged emotions for stability
+            if avg_emotions:
+                vec = emotions_dict_to_vector(avg_emotions)
+                smoothed = self.emotion_smoother.update(vec)
+                if smoothed is not None:
+                    avg_emotions = vector_to_emotions_dict(smoothed)
+                    main_emotion = max(avg_emotions, key=avg_emotions.get)
             
             # Calculate danger score
             danger_score = calculate_danger_score(avg_emotions)

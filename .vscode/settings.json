@@ -1,4 +1,16 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:venv",
-    "python-envs.pythonProjects": []
+    // which python interpreter to use in VS Code
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+
+    // Pylance language server settings
+    "python.languageServer": "Pylance",
+
+    // Pylance checks imports and packages against this interpreter path
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/.venv/Lib/site-packages",
+        "${workspaceFolder}/venvfile/Lib/site-packages"
+    ],
+
+    // Automatically activate the virtual environment in the terminal
+    "python.terminal.activateEnvironment": true
 }

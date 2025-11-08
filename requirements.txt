@@ -8,7 +8,7 @@ flask-cors==6.0.1
 gunicorn==23.0.0
 
 # Computer Vision / ML (TensorFlow backend)
-deepface==0.0.93
+deepface
 mediapipe==0.10.21
 opencv-contrib-python==4.11.0.86
 
