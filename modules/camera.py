@@ -2,6 +2,8 @@
 Camera operations and video stream management
 """
 import cv2
+import numpy as np
+from modules import esp_client
 import time
 import uuid
 import mediapipe as mp
@@ -27,6 +29,10 @@ class CameraStream:
     def __init__(self):
         self.detection_enabled = True
         self.last_danger_check = 0
+        # If remote_ip is set, frames will be pulled from ESP via HTTP
+        self.remote_ip = None
+        # small backoff between remote fetches to avoid overloading ESP
+        self._remote_delay = 0.1
         # temporal smoother for emotion probabilities (single-stream fallback)
         self.emotion_smoother = TemporalSmoother(maxlen=8, ema_alpha=0.6)
     
@@ -37,6 +43,19 @@ class CameraStream:
     def is_detection_enabled(self):
         """Returns detection status."""
         return self.detection_enabled
+
+    def set_remote_ip(self, ip: str):
+        """Set an ESP IP to use as frame source. Pass None to clear."""
+        if ip:
+            self.remote_ip = ip
+        else:
+            self.remote_ip = None
+
+    def clear_remote_ip(self):
+        self.remote_ip = None
+
+    def is_using_remote(self):
+        return bool(self.remote_ip)
     
     def draw_face_mesh(self, frame, rgb):
         """Draws face mesh on frame."""
@@ -98,17 +117,42 @@ class CameraStream:
                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
     
     def generate_frames(self):
-        """Generates frames for video stream."""
-        cap = cv2.VideoCapture(0)
+        """Generates frames for video stream.
+
+        If `self.remote_ip` is set, fetch single JPEG snapshots from the ESP
+        and use them as the frame source. Otherwise fall back to local camera
+        capture (index 0) and the existing analysis pipeline.
+        """
         frame_count = 0
-        
+
+        # Local capture object (created lazily only if needed)
+        cap = None
+
         while True:
-            success, frame = cap.read()
-            if not success:
-                break
-            
-            frame = cv2.flip(frame, 1)
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if self.remote_ip:
+                # Fetch JPEG bytes from ESP
+                jpeg = esp_client.get_snapshot(self.remote_ip)
+                if not jpeg:
+                    # yield a short error frame or retry
+                    # (we simply sleep briefly and continue)
+                    time.sleep(self._remote_delay)
+                    continue
+                # decode JPEG bytes into OpenCV image
+                arr = np.frombuffer(jpeg, dtype=np.uint8)
+                frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+                if frame is None:
+                    time.sleep(self._remote_delay)
+                    continue
+                # No horizontal flip for remote stream by default
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            else:
+                if cap is None:
+                    cap = cv2.VideoCapture(0)
+                success, frame = cap.read()
+                if not success:
+                    break
+                frame = cv2.flip(frame, 1)
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
             # Draw face mesh
             self.draw_face_mesh(frame, rgb)
@@ -155,7 +199,8 @@ class CameraStream:
             
             frame_count += 1
         
-        cap.release()
+        if cap is not None:
+            cap.release()
 
 
 # Global camera instance

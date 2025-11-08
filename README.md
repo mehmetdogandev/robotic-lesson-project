@@ -16,6 +16,8 @@
 -  **Emotion Analysis**: 7 different emotion detection using DeepFace library (Happy, Sad, Angry, Surprise, Fear, Disgust, Neutral)
 -  **Dangerous Person Detection**: Automatic alert system for negative emotions
 -  **Face Recognition & Registration**: Person identification using FaceNet embeddings and database management
+-  **ESP32 Camera Integration**: Remote ESP32-CAM support with optimal settings for emotion analysis
+-  **Advanced Camera Controls**: Real-time camera parameter adjustment for best emotion detection
 -  **Web Interface**: User-friendly Flask-based web interface
 -  **REST API**: Comprehensive API endpoints for external system integration
 
@@ -42,6 +44,10 @@ robotik/
     face_analysis.py         #  Face analysis and emotion detection
     storage.py               #  File saving and loading operations
     camera.py                #  Camera stream and video frame processing
+    esp_client.py            #  ESP32 camera client and controls
+
+  docs/                      #  Documentation
+    ESP_CAMERA_SETTINGS.md   #  ESP32 camera optimization guide
 
   static/
      captured/             #  Dangerous person images (auto-created)
@@ -136,16 +142,37 @@ Camera management and real-time processing:
 
 ---
 
-### 5 `main.py` - Flask Application
+### 5 `esp_client.py` - ESP32 Camera Client
+ESP32-CAM integration and remote control:
+
+**Functions:**
+- `get_snapshot()` - Capture single frame from ESP32
+- `send_command()` - Send control commands to ESP32
+- `get_status()` - Get current camera settings
+- `apply_emotion_analysis_preset()` - Apply optimal settings for emotion analysis
+
+**Optimal Settings:**
+- Resolution: XGA (1024x768)
+- JPEG Quality: 10 (best)
+- Auto White Balance: ON
+- Auto Exposure: ON
+- Face Detection: ON
+
+---
+
+### 6 `main.py` - Flask Application
 HTTP server and API endpoints:
 
 **Routes:**
 - `GET /` - Home page
-- `GET /video_feed` - MJPEG video stream
+- `GET /video_feed` - MJPEG video stream (supports ?ip= for ESP32)
 - `GET /captured` - List of registered persons
 - `POST /set_detection` - Toggle detection on/off
 - `GET /status` - System status
 - `GET /current_emotions` - Real-time emotion data
+- `POST /esp_command` - Send command to ESP32 camera
+- `GET /esp_status` - Get ESP32 camera status
+- `POST /esp_apply_preset` - Apply optimal ESP32 settings
 
 ---
 
@@ -301,15 +328,26 @@ Open these addresses in your browser:
 
 ###  User Interface
 
-1. **Video Stream**: Real-time camera feed
+1. **Video Stream**: Real-time camera feed (local or ESP32)
 2. **Face Mesh**: Green landmark points on face
 3. **Emotion Display**: "Dominant Emotion" shown at top of screen
 4. **Danger Alert**: Red warning when dangerous situation detected
+5. **ESP32 Controls**: Camera optimization panel (shown when connected)
 
-**Keyboard Controls** (can be added to web interface):
-- `Space` - Pause/resume detection
-- `R` - Reset emotion history
-- `Esc` - Exit
+**ESP32 Camera Features:**
+- 🎯 One-click optimal settings for emotion analysis
+- 📐 Resolution control (UXGA to QVGA)
+- 🎨 JPEG quality adjustment
+- ☀️ Brightness, contrast, saturation controls
+- 🤖 Auto white balance, exposure, gain settings
+- ✨ Special effects and filters
+- 📊 Real-time settings display
+
+**Connection:**
+1. Enter ESP32 IP address (e.g., 10.64.220.72)
+2. Click "Bağlan" (Connect)
+3. ESP controls panel will appear
+4. Click "Duygu Analizi İçin Optimize Et" for best settings
 
 ---
 
@@ -394,6 +432,72 @@ GET /current_emotions
 
 ---
 
+### 6. ESP32 Camera Control
+```http
+POST /esp_command
+Content-Type: application/json
+
+{
+  "ip": "10.64.220.72",
+  "params": {
+    "var": "framesize",
+    "val": "8"
+  }
+}
+```
+**Response:**
+```json
+{
+  "status": 200,
+  "body": "OK"
+}
+```
+
+---
+
+### 7. Get ESP32 Status
+```http
+GET /esp_status?ip=10.64.220.72
+```
+**Response:**
+```json
+{
+  "status": "success",
+  "settings": {
+    "framesize": 8,
+    "quality": 10,
+    "brightness": 0,
+    "contrast": 0,
+    "saturation": 0,
+    "awb": 1,
+    "aec": 1,
+    "agc": 1,
+    ...
+  }
+}
+```
+
+---
+
+### 8. Apply Optimal ESP32 Settings
+```http
+POST /esp_apply_preset
+Content-Type: application/json
+
+{
+  "ip": "10.64.220.72"
+}
+```
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Optimal settings applied"
+}
+```
+
+---
+
 ##  Configuration
 
 Customize system behavior by editing `modules/config.py`:
@@ -404,6 +508,19 @@ Customize system behavior by editing `modules/config.py`:
 | `HISTORY_SIZE` | 3 | Number of analyses to average (higher = smoother) |
 | `DANGER_THRESHOLD` | 70 | Danger score threshold (angry+fear+disgust sum) |
 | `FACE_SIMILARITY_THRESHOLD` | 0.6 | Face recognition sensitivity (0.5=strict, 0.8=loose) |
+| `ESP_OPTIMAL_SETTINGS` | {...} | Optimal ESP32 camera settings for emotion analysis |
+
+**ESP32 Optimal Settings:**
+```python
+ESP_OPTIMAL_SETTINGS = {
+    "framesize": 8,        # XGA (1024x768)
+    "quality": 10,         # Best JPEG quality
+    "awb": 1,             # Auto White Balance ON
+    "aec": 1,             # Auto Exposure ON
+    "agc": 1,             # Auto Gain ON
+    # ... see config.py for full list
+}
+```
 
 **Example Customization:**
 ```python
@@ -480,12 +597,45 @@ app.run(host='0.0.0.0', port=5001)  # Use 5001 instead of 5000
 
 ---
 
+##  ESP32-CAM Setup
+
+###  Hardware Requirements
+- ESP32-CAM module (AI-Thinker recommended)
+- OV2640 or OV5640 camera sensor
+- USB to Serial adapter (for programming)
+- 5V power supply
+
+###  Firmware Upload
+1. Open `esp_system/esp_system.ino` in Arduino IDE
+2. Install ESP32 board support
+3. Select Board: "AI Thinker ESP32-CAM"
+4. Upload the sketch
+5. Note the IP address from Serial Monitor
+
+###  Connection
+1. Ensure ESP32-CAM and computer are on same network
+2. Enter ESP32 IP in web interface
+3. Click "Bağlan" (Connect)
+4. Apply optimal settings with one click
+
+###  Optimal Settings for Emotion Analysis
+- **Resolution:** XGA (1024x768) - Best balance
+- **Quality:** 10 (highest)
+- **Auto White Balance:** ON (critical for skin tone)
+- **Auto Exposure:** ON
+- **Lens Correction:** ON
+
+**📖 For detailed ESP32 camera settings guide, see:** `docs/ESP_CAMERA_SETTINGS.md`
+
+---
+
 ##  Important Notes
 
 ###  Security
 - Camera access required (browser permission)
 - Registered faces stored locally (GDPR compliant)
 - Use HTTPS in production
+- ESP32 cameras on same network only (no authentication by default)
 
 ###  Data Storage
 - Per dangerous person: 1 JPG + 1 JSON file

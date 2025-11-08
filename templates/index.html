@@ -43,9 +43,25 @@
         }
         #panel {
             margin: 24px auto;
-            max-width: 1200px;
+            max-width: 1400px;
             text-align: left;
             padding: 0 16px;
+        }
+        #liveArea {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        #liveArea img {
+            flex: 0 0 auto;
+            max-width: 640px;
+        }
+        #realtimeContainer {
+            flex: 0 0 320px;
+            min-width: 280px;
         }
         .toolbar {
             display: flex;
@@ -122,23 +138,144 @@
 </head>
 <body>
     <h1>🎥 Canlı Duygu Analizi</h1>
-    <img class="live" src="{{ url_for('video_feed') }}" width="640" height="480" alt="Canlı Yayın">
-
+    
     <div id="panel">
         <div class="toolbar">
+            <input id="ipInput" type="text" placeholder="Kamera IP (örn. 10.64.220.72)" value="10.64.220.72" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);width:200px">
+            <button id="btnConnect" class="btn btn-primary">Bağlan</button>
+            <button id="btnDisconnect" class="btn">Yerel Kamera</button>
             <button id="btnStart" class="btn btn-green">Algılamayı Aç</button>
             <button id="btnStop" class="btn btn-red">Algılamayı Kapat</button>
             <button id="refresh" class="btn btn-primary">Paneli Yenile</button>
             <span id="status" class="meta"></span>
             <span id="count" class="meta"></span>
         </div>
-        <div id="realtime" class="card" style="margin-top:16px;">
-            <div class="body">
-                <div class="title">Anlık Duygular <span id="rt-main" class="badge">-</span></div>
-                <div class="meta" id="rt-meta">Durum: -</div>
-                <div id="rt-bars" class="emotions grid"></div>
+        
+        <!-- ESP Camera Controls - Only shown when connected -->
+        <div id="espControls" style="display:none; margin-top:16px; padding:16px; background:var(--card); border-radius:12px; border:1px solid rgba(0,229,255,0.2);">
+            <h3 style="margin:0 0 12px 0; font-size:16px; color:var(--accent);">⚙️ ESP32 Kamera Ayarları</h3>
+            
+            <!-- Preset Buttons -->
+            <div style="margin-bottom:16px; padding:12px; background:rgba(0,229,255,0.05); border-radius:8px;">
+                <div style="margin-bottom:8px; color:var(--muted); font-size:13px;">🎯 Önceden Tanımlı Ayarlar:</div>
+                <button class="btn btn-primary" onclick="applyOptimalPreset()">✨ Duygu Analizi İçin Optimize Et</button>
+                <button class="btn" onclick="refreshESPStatus()">🔄 Mevcut Ayarları Göster</button>
+            </div>
+            
+            <!-- Manual Controls -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                <!-- Resolution -->
+                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">📐 Çözünürlük</div>
+                    <select id="framesize" onchange="setESPParam('framesize', this.value)" style="width:100%; padding:8px; border-radius:6px; background:var(--panel); color:var(--text); border:1px solid rgba(255,255,255,0.1);">
+                        <option value="10">UXGA (1600x1200)</option>
+                        <option value="9">SXGA (1280x1024)</option>
+                        <option value="8" selected>XGA (1024x768) ⭐</option>
+                        <option value="7">SVGA (800x600)</option>
+                        <option value="6">VGA (640x480)</option>
+                        <option value="5">CIF (352x288)</option>
+                        <option value="4">QVGA (320x240)</option>
+                    </select>
+                </div>
+                
+                <!-- Quality -->
+                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🎨 JPEG Kalitesi</div>
+                    <input type="range" id="quality" min="10" max="63" value="10" oninput="setESPParam('quality', this.value); document.getElementById('qualityVal').textContent=this.value" style="width:100%;">
+                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="qualityVal">10</span> (10=En İyi)</div>
+                </div>
+                
+                <!-- Brightness -->
+                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">☀️ Parlaklık</div>
+                    <input type="range" id="brightness" min="-2" max="2" value="0" oninput="setESPParam('brightness', this.value); document.getElementById('brightnessVal').textContent=this.value" style="width:100%;">
+                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="brightnessVal">0</span></div>
+                </div>
+                
+                <!-- Contrast -->
+                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🔲 Kontrast</div>
+                    <input type="range" id="contrast" min="-2" max="2" value="0" oninput="setESPParam('contrast', this.value); document.getElementById('contrastVal').textContent=this.value" style="width:100%;">
+                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="contrastVal">0</span></div>
+                </div>
+                
+                <!-- Saturation -->
+                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🌈 Doygunluk</div>
+                    <input type="range" id="saturation" min="-2" max="2" value="0" oninput="setESPParam('saturation', this.value); document.getElementById('saturationVal').textContent=this.value" style="width:100%;">
+                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="saturationVal">0</span></div>
+                </div>
+                
+                <!-- Special Effect -->
+                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">✨ Özel Efekt</div>
+                    <select id="special_effect" onchange="setESPParam('special_effect', this.value)" style="width:100%; padding:8px; border-radius:6px; background:var(--panel); color:var(--text); border:1px solid rgba(255,255,255,0.1);">
+                        <option value="0">Yok</option>
+                        <option value="1">Negatif</option>
+                        <option value="2">Gri Tonlama</option>
+                        <option value="3">Kırmızı Ton</option>
+                        <option value="4">Yeşil Ton</option>
+                        <option value="5">Mavi Ton</option>
+                        <option value="6">Sepia</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Auto Settings -->
+            <div style="margin-top:12px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🤖 Otomatik Ayarlar</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="awb" onchange="setESPParam('awb', this.checked?1:0)" checked>
+                        <span style="font-size:13px;">Auto White Balance</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="aec" onchange="setESPParam('aec', this.checked?1:0)" checked>
+                        <span style="font-size:13px;">Auto Exposure</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="agc" onchange="setESPParam('agc', this.checked?1:0)" checked>
+                        <span style="font-size:13px;">Auto Gain</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="awb_gain" onchange="setESPParam('awb_gain', this.checked?1:0)" checked>
+                        <span style="font-size:13px;">AWB Gain</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="lenc" onchange="setESPParam('lenc', this.checked?1:0)" checked>
+                        <span style="font-size:13px;">Lens Düzeltme</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="hmirror" onchange="setESPParam('hmirror', this.checked?1:0)">
+                        <span style="font-size:13px;">Yatay Ayna</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="vflip" onchange="setESPParam('vflip', this.checked?1:0)">
+                        <span style="font-size:13px;">Dikey Çevir</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Status Display -->
+            <div id="espStatusDisplay" style="margin-top:12px; padding:12px; background:rgba(139,92,246,0.1); border-radius:8px; border:1px solid rgba(139,92,246,0.2); display:none;">
+                <div style="color:var(--accent-2); font-size:13px; font-weight:600; margin-bottom:8px;">📊 Mevcut Ayarlar</div>
+                <div id="espStatusContent" style="font-size:12px; color:var(--muted); line-height:1.6;"></div>
             </div>
         </div>
+        
+        <div id="liveArea">
+            <img id="liveImg" class="live" src="{{ url_for('video_feed') }}" width="640" height="480" alt="Canlı Yayın">
+            <div id="realtimeContainer">
+                <div id="realtime" class="card">
+                    <div class="body">
+                        <div class="title">Anlık Duygular <span id="rt-main" class="badge">-</span></div>
+                        <div class="meta" id="rt-meta">Durum: -</div>
+                        <div id="rt-bars" class="emotions grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div id="cards"></div>
     </div>
 
@@ -306,6 +443,15 @@
             const main = data.main_emotion || '-';
             const dsc = data.danger_score || 0;
 
+            // Yüz algılanmadıysa duygu bilgisi gösterme
+            const faceDetected = em && Object.keys(em).length > 0 && Object.values(em).some(v => v > 0);
+            
+            if (!faceDetected) {
+                rtMain.textContent = '-';
+                rtMeta.textContent = `Durum: ${enabled ? 'Açık' : 'Kapalı'} • Yüz algılanmadı`;
+                return;
+            }
+
             rtMain.textContent = trEmo[main] || main;
             rtMeta.textContent = `Durum: ${enabled ? 'Açık' : 'Kapalı'} • Zaman: ${ts} • Tehlike Skoru: ${pct(dsc)}%`;
 
@@ -341,6 +487,189 @@
         document.getElementById('refresh').onclick = loadPanel;
         document.getElementById('btnStart').onclick = () => setDetection(true);
         document.getElementById('btnStop').onclick = () => setDetection(false);
+        
+        let currentESPip = null;
+        
+        // Connect / Disconnect to remote ESP32 camera by IP
+        function connectStream(){
+            const ip = document.getElementById('ipInput').value.trim();
+            if (!ip) return alert('Lütfen bir IP girin');
+            const img = document.getElementById('liveImg');
+            img.src = `/video_feed?ip=${encodeURIComponent(ip)}`;
+            document.getElementById('status').textContent = `Bağlanıyor: ${ip}`;
+            
+            // Show ESP controls
+            currentESPip = ip;
+            document.getElementById('espControls').style.display = 'block';
+            
+            // Load current settings
+            setTimeout(() => refreshESPStatus(), 1000);
+        }
+        
+        function disconnectStream(){
+            // revert to local/default camera (server-side)
+            const img = document.getElementById('liveImg');
+            img.src = `{{ url_for('video_feed') }}`;
+            document.getElementById('status').textContent = `Yerel kameraya geçildi`;
+            
+            // Hide ESP controls
+            currentESPip = null;
+            document.getElementById('espControls').style.display = 'none';
+        }
+        
+        document.getElementById('btnConnect').onclick = connectStream;
+        document.getElementById('btnDisconnect').onclick = disconnectStream;
+        
+        // ESP Camera Parameter Control
+        async function setESPParam(param, value) {
+            if (!currentESPip) {
+                alert('Lütfen önce ESP kamerasına bağlanın');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/esp_command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        ip: currentESPip, 
+                        params: { var: param, val: value } 
+                    })
+                });
+                
+                const result = await res.json();
+                if (result.status === 200) {
+                    console.log('✓ ESP ayar uygulandı:', param, '=', value);
+                } else {
+                    console.warn('⚠ ESP ayar hatası:', result);
+                    alert(`Ayar hatası: ${param}`);
+                }
+            } catch (e) {
+                console.error('❌ ESP komut gönderme hatası:', e);
+                alert('ESP ile iletişim hatası');
+            }
+        }
+        
+        // Apply Optimal Preset for Emotion Analysis
+        async function applyOptimalPreset() {
+            if (!currentESPip) {
+                alert('Lütfen önce ESP kamerasına bağlanın');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Ayarlar uygulanıyor...';
+            
+            try {
+                const res = await fetch('/esp_apply_preset', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ip: currentESPip })
+                });
+                
+                const result = await res.json();
+                if (result.status === 'success') {
+                    alert('✅ Optimal ayarlar başarıyla uygulandı!\n\n' +
+                          '• Çözünürlük: XGA (1024x768)\n' +
+                          '• JPEG Kalitesi: En Yüksek\n' +
+                          '• Otomatik Ayarlar: Aktif\n' +
+                          '• Yüz Algılama: Aktif');
+                    
+                    // Update UI controls to reflect new settings
+                    setTimeout(() => refreshESPStatus(), 500);
+                } else {
+                    alert('⚠ Bazı ayarlar uygulanamadı. Lütfen manuel kontrol edin.');
+                }
+            } catch (e) {
+                console.error('❌ Preset uygulama hatası:', e);
+                alert('Ayarlar uygulanırken hata oluştu');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✨ Duygu Analizi İçin Optimize Et';
+            }
+        }
+        
+        // Refresh and display current ESP status
+        async function refreshESPStatus() {
+            if (!currentESPip) return;
+            
+            try {
+                const res = await fetch(`/esp_status?ip=${encodeURIComponent(currentESPip)}`);
+                const result = await res.json();
+                
+                if (result.status === 'success' && result.settings) {
+                    const settings = result.settings;
+                    
+                    // Update UI controls
+                    if (settings.framesize !== undefined) {
+                        document.getElementById('framesize').value = settings.framesize;
+                    }
+                    if (settings.quality !== undefined) {
+                        document.getElementById('quality').value = settings.quality;
+                        document.getElementById('qualityVal').textContent = settings.quality;
+                    }
+                    if (settings.brightness !== undefined) {
+                        document.getElementById('brightness').value = settings.brightness;
+                        document.getElementById('brightnessVal').textContent = settings.brightness;
+                    }
+                    if (settings.contrast !== undefined) {
+                        document.getElementById('contrast').value = settings.contrast;
+                        document.getElementById('contrastVal').textContent = settings.contrast;
+                    }
+                    if (settings.saturation !== undefined) {
+                        document.getElementById('saturation').value = settings.saturation;
+                        document.getElementById('saturationVal').textContent = settings.saturation;
+                    }
+                    if (settings.special_effect !== undefined) {
+                        document.getElementById('special_effect').value = settings.special_effect;
+                    }
+                    
+                    // Update checkboxes
+                    if (settings.awb !== undefined) document.getElementById('awb').checked = settings.awb === 1;
+                    if (settings.aec !== undefined) document.getElementById('aec').checked = settings.aec === 1;
+                    if (settings.agc !== undefined) document.getElementById('agc').checked = settings.agc === 1;
+                    if (settings.awb_gain !== undefined) document.getElementById('awb_gain').checked = settings.awb_gain === 1;
+                    if (settings.lenc !== undefined) document.getElementById('lenc').checked = settings.lenc === 1;
+                    if (settings.hmirror !== undefined) document.getElementById('hmirror').checked = settings.hmirror === 1;
+                    if (settings.vflip !== undefined) document.getElementById('vflip').checked = settings.vflip === 1;
+                    
+                    // Display status info
+                    const resolutionNames = {
+                        10: 'UXGA (1600x1200)',
+                        9: 'SXGA (1280x1024)',
+                        8: 'XGA (1024x768)',
+                        7: 'SVGA (800x600)',
+                        6: 'VGA (640x480)',
+                        5: 'CIF (352x288)',
+                        4: 'QVGA (320x240)'
+                    };
+                    
+                    const statusHtml = `
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px;">
+                            <div>Çözünürlük: <strong>${resolutionNames[settings.framesize] || settings.framesize}</strong></div>
+                            <div>JPEG Kalite: <strong>${settings.quality}</strong></div>
+                            <div>Parlaklık: <strong>${settings.brightness}</strong></div>
+                            <div>Kontrast: <strong>${settings.contrast}</strong></div>
+                            <div>Doygunluk: <strong>${settings.saturation}</strong></div>
+                            <div>AWB: <strong>${settings.awb ? 'Açık' : 'Kapalı'}</strong></div>
+                            <div>AEC: <strong>${settings.aec ? 'Açık' : 'Kapalı'}</strong></div>
+                            <div>AGC: <strong>${settings.agc ? 'Açık' : 'Kapalı'}</strong></div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('espStatusContent').innerHTML = statusHtml;
+                    document.getElementById('espStatusDisplay').style.display = 'block';
+                    
+                    console.log('✓ ESP ayarları yüklendi:', settings);
+                } else {
+                    console.warn('⚠ ESP durum bilgisi alınamadı');
+                }
+            } catch (e) {
+                console.error('❌ ESP durum sorgulama hatası:', e);
+            }
+        }
+        
         // İlk yükleme
         updateStatus();
         loadPanel();
