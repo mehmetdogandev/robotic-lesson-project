@@ -1,107 +1,32 @@
-# requirements.txt for python 3.10
-absl-py==2.3.1
-astunparse==1.6.3
-attrs==25.4.0
-beautifulsoup4==4.14.2
-blinker==1.9.0
-cachetools==6.2.0
-certifi==2025.10.5
-cffi==2.0.0
-charset-normalizer==3.4.3
-click==8.3.0
-colorama==0.4.6
-contourpy==1.3.2
-cycler==0.12.1
-decorator==5.2.1
-deepface==0.0.93
-facenet-pytorch==2.6.0
-fer==22.5.1
-ffmpeg==1.4
-filelock==3.20.0
-fire==0.7.1
+# Requirements for Robotic Face Recognition and Emotion Analysis System
+# Adjusted to avoid version conflicts between TensorFlow and PyTorch-related packages.
+# This set targets a TensorFlow backend (DeepFace) which is the default used here.
+
+# Web
 Flask==3.1.2
 flask-cors==6.0.1
-flatbuffers==25.9.23
-fonttools==4.60.1
-fsspec==2025.9.0
-gast==0.4.0
-gdown==5.2.0
-google-auth==2.41.1
-google-auth-oauthlib==1.0.0
-google-pasta==0.2.0
-grpcio==1.75.1
 gunicorn==23.0.0
-h5py==3.14.0
-idna==3.10
-imageio==2.37.0
-imageio-ffmpeg==0.6.0
-itsdangerous==2.2.0
-jax==0.4.30
-jaxlib==0.4.30
-Jinja2==3.1.6
-joblib==1.5.2
-keras==2.12.0
-kiwisolver==1.4.9
-libclang==18.1.1
-lz4==4.4.4
-Markdown==3.9
-markdown-it-py==4.0.0
-MarkupSafe==3.0.3
-matplotlib==3.10.7
-mdurl==0.1.2
+
+# Computer Vision / ML (TensorFlow backend)
+deepface==0.0.93
 mediapipe==0.10.21
-ml_dtypes==0.5.3
-moviepy==2.2.1
-mpmath==1.3.0
-mtcnn==1.0.0
-namex==0.1.0
-networkx==3.4.2
-numpy==1.26.4
-oauthlib==3.3.1
 opencv-contrib-python==4.11.0.86
-opencv-python==4.10.0.84
-opt_einsum==3.4.0
-optree==0.17.0
-packaging==25.0
-pandas==2.3.3
-pillow==10.2.0
-proglog==0.1.12
-protobuf==4.25.8
-pyasn1==0.6.1
-pyasn1_modules==0.4.2
-pycparser==2.23
-Pygments==2.19.2
-pyparsing==3.2.5
-PySocks==1.7.1
-python-dateutil==2.9.0.post0
-python-dotenv==1.1.1
-pytz==2025.2
-requests==2.32.5
-requests-oauthlib==2.0.0
-retina-face==0.0.17
-rich==14.2.0
-rsa==4.9.1
-scipy==1.15.3
-sentencepiece==0.2.1
-six==1.17.0
-sounddevice==0.5.2
-soupsieve==2.8
-sympy==1.14.0
-tensorboard==2.12.3
-tensorboard-data-server==0.7.2
+
+# Deep learning backend
 tensorflow==2.12.0
-tensorflow-estimator==2.12.0
-tensorflow-intel==2.12.0
-tensorflow-io-gcs-filesystem==0.31.0
-termcolor==3.1.0
-torch==2.2.2
-torchvision==0.17.2
-tqdm==4.67.1
-typing_extensions==4.15.0
-tzdata==2025.2
-urllib3==2.5.0
-Werkzeug==3.1.3
-wrapt==1.14.2
 
-# requirements.txt for python 3.13.5
+# Core utilities
+numpy==1.23.5
+pillow==10.2.0
+requests==2.32.5
 
+# Optional / helper packages
+python-dotenv==1.1.1
+scipy==1.15.3
+pandas==2.3.3
+
+# Notes:
+# - We pin numpy to 1.23.5 to maintain compatibility with TensorFlow 2.12.0.
+# - If you prefer a PyTorch-only setup (facenet-pytorch / mtcnn), remove TensorFlow and use compatible
+#   torch/facenet-pytorch versions instead. Those require numpy>=1.24 which conflicts with TF 2.12.
+# - Installing these packages can be heavy (TensorFlow, mediapipe). Use a virtual environment.
