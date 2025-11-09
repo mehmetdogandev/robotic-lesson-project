@@ -182,6 +182,12 @@ class CameraStream:
             latest_state["main_emotion"] = main_emotion
             latest_state["danger_score"] = float(danger_score)
             
+            # Send emotion to ESP32 OLED if URL is configured
+            from modules.face_analysis import send_emotion_to_esp32, ESP32_TARGET_URL
+            if main_emotion and avg_emotions and ESP32_TARGET_URL:
+                confidence = avg_emotions.get(main_emotion, 0) / 100.0
+                send_emotion_to_esp32(main_emotion, confidence)
+            
             # Draw information on frame
             y0 = 30
             self.draw_emotion_info(frame, main_emotion, avg_emotions, y0)

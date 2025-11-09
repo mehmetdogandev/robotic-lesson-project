@@ -4,7 +4,12 @@ Face analysis, emotion detection, and person recognition operations
 import numpy as np
 from deepface import DeepFace
 from collections import deque
+import requests
+import json
 from modules.config import HISTORY_SIZE, FACE_SIMILARITY_THRESHOLD
+
+# ESP32 target URL for emotion data (can be set by user)
+ESP32_TARGET_URL = None
 
 # Emotion history
 emotion_history = deque(maxlen=HISTORY_SIZE)
@@ -190,3 +195,46 @@ def register_dangerous_person(person_id, embedding):
 def clear_emotion_history():
     """Clears emotion history."""
     emotion_history.clear()
+
+
+def set_esp32_target_url(url):
+    """Sets ESP32 target URL for emotion data transmission."""
+    global ESP32_TARGET_URL
+    ESP32_TARGET_URL = url
+    print(f"✓ ESP32 hedef URL ayarlandı: {url}")
+
+
+def send_emotion_to_esp32(emotion, confidence):
+    """Sends emotion data to ESP32 via HTTP POST."""
+    global ESP32_TARGET_URL
+    
+    if not ESP32_TARGET_URL:
+        return False
+    
+    try:
+        payload = {
+            "emotion": emotion,
+            "confidence": float(confidence)
+        }
+        
+        response = requests.post(
+            ESP32_TARGET_URL,
+            json=payload,
+            timeout=2
+        )
+        
+        if response.status_code == 200:
+            return True
+        else:
+            print(f"⚠️ ESP32 yanıt hatası: {response.status_code}")
+            return False
+            
+    except requests.exceptions.Timeout:
+        print("⚠️ ESP32 bağlantı zaman aşımı")
+        return False
+    except requests.exceptions.ConnectionError:
+        print("⚠️ ESP32'ye bağlanılamadı")
+        return False
+    except Exception as e:
+        print(f"⚠️ ESP32 gönderim hatası: {e}")
+        return False

@@ -10,11 +10,15 @@ from modules.config import latest_state
 from modules.camera import camera_stream
 from modules.storage import load_existing_faces, get_captured_images
 from modules import esp_client
+from modules import face_analysis
 
 app = Flask(__name__)
 
 # Load registered persons on application startup
 load_existing_faces()
+
+# ESP32 OLED target URL - will be set by user
+ESP32_OLED_URL = None
 
 
 
@@ -110,6 +114,11 @@ def video_feed():
                     latest_state["emotions"] = avg_emotions if avg_emotions else None
                     latest_state["main_emotion"] = main_emotion
                     latest_state["danger_score"] = float(danger_score)
+                    
+                    # Send emotion to ESP32 OLED if URL is configured
+                    if main_emotion and avg_emotions and face_analysis.ESP32_TARGET_URL:
+                        confidence = avg_emotions.get(main_emotion, 0) / 100.0
+                        face_analysis.send_emotion_to_esp32(main_emotion, confidence)
                     
                     # Draw emotion info on frame
                     y0 = 30
@@ -295,6 +304,51 @@ def current_emotions():
     return jsonify(data)
 
 
+@app.route('/set_esp32_oled_url', methods=['POST'])
+def set_esp32_oled_url():
+    """Set ESP32 OLED display target URL for emotion transmission.
+    
+    JSON body: {"url": "http://10.64.220.72:2711/face_mood"}
+    If url is empty or null, emotion transmission will be disabled.
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        url = payload.get('url', '').strip()
+        
+        if url:
+            # Validate URL format
+            if not url.startswith('http://') and not url.startswith('https://'):
+                return jsonify({"error": "URL must start with http:// or https://"}), 400
+            
+            if not '/face_mood' in url:
+                return jsonify({"error": "URL must contain /face_mood endpoint"}), 400
+            
+            face_analysis.set_esp32_target_url(url)
+            return jsonify({
+                "status": "success",
+                "message": "ESP32 OLED URL ayarlandı",
+                "url": url
+            }), 200
+        else:
+            face_analysis.set_esp32_target_url(None)
+            return jsonify({
+                "status": "success",
+                "message": "ESP32 OLED iletimi devre dışı bırakıldı"
+            }), 200
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/get_esp32_oled_url', methods=['GET'])
+def get_esp32_oled_url():
+    """Get current ESP32 OLED target URL."""
+    return jsonify({
+        "url": face_analysis.ESP32_TARGET_URL,
+        "enabled": face_analysis.ESP32_TARGET_URL is not None
+    })
+
+
 
 # ============================================
 # Application Startup
@@ -306,6 +360,23 @@ if __name__ == "__main__":
     print("=" * 60)
     print("✓ Modules loaded")
     print("✓ Registered persons loaded into memory")
-    print("🌐 Starting application: http://0.0.0.0:5000")
+    
+    # Ask user for ESP32 OLED URL (optional)
+    print("\n📟 ESP32 OLED Ekran Ayarları")
+    print("-" * 60)
+    esp_url = input("ESP32 OLED URL girin (opsiyonel, boş bırakabilirsiniz): ").strip()
+    if esp_url:
+        if not esp_url.startswith('http://') and not esp_url.startswith('https://'):
+            esp_url = f"http://{esp_url}"
+        if not '/face_mood' in esp_url:
+            if not esp_url.endswith('/'):
+                esp_url += '/'
+            esp_url += 'face_mood'
+        face_analysis.set_esp32_target_url(esp_url)
+        print(f"✓ ESP32 OLED URL: {esp_url}")
+    else:
+        print("⚠️ ESP32 OLED iletimi devre dışı (URL girilmedi)")
+    
+    print("\n🌐 Starting application: http://0.0.0.0:5000")
     print("=" * 60)
     app.run(host='0.0.0.0', port=5000, debug=False)

@@ -1,45 +1,80 @@
 /*
- *  KameraYuzTanima örneği,
+ *  KameraYuzTanima - Yüz Tanıma ve Duygu Analizi Projesi
  *  Bu örnek WiFi ağı ve şifresini girdikten sonra ağa bağlanacaktır. 
  *  WiFi ağına bağlandıktan sonra seri port ekranından görüntünün yayınlanacağı IP adresi yazılacaktır.
  * 
  *  Bu örnek kamera konnektörü dahili olan Deneyap Geliştirme Kartlarını desteklemektedir.  
+ * 
+ *  OLED Ekran Özellikleri:
+ *  - SSD1306 128x64 OLED ekran
+ *  - I2C iletişim (SDA=D10, SCL=D11)
+ *  - Duygu durumlarını Türkçe gösterir
+ *  - Gerçek zamanlı güven skoru gösterimi
 */
+
 // ---------->>>>>>>>>> YUKLEME YAPILAMDAN DIKKAT EDILMESI GEREKEN HUSUS <<<<<<<<<<----------
 // "Araclar->Partition Scheme->Huge APP" secilmeli //
 // "Tools->Partition Scheme->Huge APP" secilmeli //
 
 #include "WiFi.h"
 #include "esp_camera.h"
-#include "deneyap.h"  // Deneyap Geliştirme Kartı pin tanimlamalari
+#include "deneyap.h"  // Deneyap Geliştirme Kartı pin tanımlamaları
 
-const char* ssid = "Memet";      // Baglanti kurulacak Wi-Fi agi adi
-const char* password = "aaaa11112";  // Baglanti kurulacak Wi-Fi agi sifresi
+// WiFi ayarları
+const char* ssid = "Memet";          // Bağlantı kurulacak Wi-Fi ağı adı
+const char* password = "aaaa11112";  // Bağlantı kurulacak Wi-Fi ağı şifresi
 
+// Fonksiyon prototipleri
 void cameraInit(void);
 void startCameraServer();
 
 void setup() {
-  Serial.begin(115200);  // Hata ayiklamak icin seri port ekran baslatildi
+  Serial.begin(115200);  // Hata ayıklamak için seri port ekran başlatıldı
   Serial.setDebugOutput(true);
   Serial.println();
+  Serial.println("========================================");
+  Serial.println("ESP32 Kamera + OLED Duygu Tanima Sistemi");
+  Serial.println("========================================");
 
-  cameraInit();  // Kamera konfigurasyonu yapildi
+  // Kamera konfigurasyonu yapıldı
+  cameraInit();
 
-  WiFi.begin(ssid, password);  // Wi-Fi agina baglaniliyor
+  Serial.println();
+  Serial.println("Wi-Fi agina baglaniliyor...");
+  WiFi.begin(ssid, password);  // Wi-Fi ağına bağlanılıyor
 
-  while (WiFi.status() != WL_CONNECTED) {  // Baglanti saglanan kadar bekleniyor
+  int wifi_retry = 0;
+  while (WiFi.status() != WL_CONNECTED && wifi_retry < 30) {  // Bağlantı sağlanana kadar bekleniyor
     delay(500);
     Serial.print(".");
+    wifi_retry++;
   }
+  
   Serial.println("");
-  Serial.println("Wi-Fi agina baglanildi ");
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("✓ Wi-Fi agina baglandi!");
+    Serial.print("IP Adresi: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("✗ Wi-Fi baglantisi basarisiz!");
+    Serial.println("Lutfen SSID ve sifreyi kontrol edin.");
+  }
 
-  startCameraServer();  // Kamera server baslatildi
+  // Kamera server başlatıldı
+  startCameraServer();
 
-  Serial.print("Kamera hazir! Baglanmak icin 'http://");  // Baglanti saglandi
-  Serial.print(WiFi.localIP());                           // Goruntunun yayinlanacagi IP adresi seri port ekranına yaziliyor
-  Serial.println("' adresini kullaniniz");
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("Sistem Hazir!");
+  Serial.println("========================================");
+  Serial.print("Kamera stream: http://");
+  Serial.print(WiFi.localIP());
+  Serial.println(":81/stream");
+  Serial.print("Duygu endpoint: http://");
+  Serial.print(WiFi.localIP());
+  Serial.println("/face_mood");
+  Serial.println("========================================");
 }
 
 void loop() {
@@ -47,6 +82,8 @@ void loop() {
 }
 
 void cameraInit(void) {
+  Serial.println("Kamera baslatiliyor...");
+  
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -75,7 +112,7 @@ void cameraInit(void) {
   config.jpeg_quality = 12;
   config.fb_count = 1;
 
-  //init with high specs to pre-allocate larger buffers                     for larger pre-allocated frame buffer.
+  //init with high specs to pre-allocate larger buffers for larger pre-allocated frame buffer.
   if (config.pixel_format == PIXFORMAT_JPEG) {
     if (psramFound()) {
       config.jpeg_quality = 10;
@@ -97,11 +134,13 @@ void cameraInit(void) {
   // Camera init
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
+    Serial.printf("✗ Kamera baslatma hatasi: 0x%x\n", err);
     return;
   }
 
   sensor_t* s = esp_camera_sensor_get();
   // Drop down frame size for higher initial frame rate
   s->set_framesize(s, FRAMESIZE_QVGA);
+  
+  Serial.println("✓ Kamera basariyla baslatildi");
 }

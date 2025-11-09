@@ -18,6 +18,7 @@
 #include "driver/ledc.h"
 #include "sdkconfig.h"
 #include "camera_index.h"
+#include "oled_display.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -1126,6 +1127,67 @@ static esp_err_t index_handler(httpd_req_t *req) {
   }
 }
 
+static esp_err_t face_mood_handler(httpd_req_t *req) {
+  char content[256];
+  int ret, remaining = req->content_len;
+
+  if (remaining > sizeof(content) - 1) {
+    httpd_resp_send_500(req);
+    return ESP_FAIL;
+  }
+
+  ret = httpd_req_recv(req, content, remaining);
+  if (ret <= 0) {
+    if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+      httpd_resp_send_408(req);
+    }
+    return ESP_FAIL;
+  }
+  content[ret] = '\0';
+
+  // Parse JSON - simple parsing for {"emotion": "happy", "confidence": 0.95}
+  char emotion[32] = "unknown";
+  float confidence = 0.0;
+  
+  char *emotion_pos = strstr(content, "\"emotion\"");
+  if (emotion_pos != NULL) {
+    char *value_start = strchr(emotion_pos, ':');
+    if (value_start != NULL) {
+      value_start = strchr(value_start, '\"');
+      if (value_start != NULL) {
+        value_start++;
+        char *value_end = strchr(value_start, '\"');
+        if (value_end != NULL) {
+          int len = value_end - value_start;
+          if (len < sizeof(emotion)) {
+            strncpy(emotion, value_start, len);
+            emotion[len] = '\0';
+          }
+        }
+      }
+    }
+  }
+
+  char *confidence_pos = strstr(content, "\"confidence\"");
+  if (confidence_pos != NULL) {
+    char *value_start = strchr(confidence_pos, ':');
+    if (value_start != NULL) {
+      confidence = atof(value_start + 1);
+    }
+  }
+
+  ESP_LOGI(TAG, "Duygu alindi: %s (%.2f)", emotion, confidence);
+  
+  // Display on OLED
+  oled_display_emotion(emotion, confidence);
+
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  httpd_resp_set_type(req, "application/json");
+  
+  const char* response = "{\"status\":\"success\",\"message\":\"Emotion displayed on OLED\"}";
+  return httpd_resp_send(req, response, strlen(response));
+}
+
 void startCameraServer() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.max_uri_handlers = 16;
@@ -1273,7 +1335,23 @@ void startCameraServer() {
 #endif
   };
 
+  httpd_uri_t face_mood_uri = {
+    .uri = "/face_mood",
+    .method = HTTP_POST,
+    .handler = face_mood_handler,
+    .user_ctx = NULL
+#ifdef CONFIG_HTTPD_WS_SUPPORT
+    ,
+    .is_websocket = false,
+    .handle_ws_control_frames = false,
+    .supported_subprotocol = NULL
+#endif
+  };
+
   ra_filter_init(&ra_filter, 20);
+  
+  // Initialize OLED display
+  oled_display_init();
 
 #if CONFIG_ESP_FACE_RECOGNITION_ENABLED
   recognizer.set_partition(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fr");
@@ -1288,6 +1366,7 @@ void startCameraServer() {
     httpd_register_uri_handler(camera_httpd, &status_uri);
     httpd_register_uri_handler(camera_httpd, &capture_uri);
     httpd_register_uri_handler(camera_httpd, &bmp_uri);
+    httpd_register_uri_handler(camera_httpd, &face_mood_uri);
 
     httpd_register_uri_handler(camera_httpd, &xclk_uri);
     httpd_register_uri_handler(camera_httpd, &reg_uri);
