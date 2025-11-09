@@ -205,7 +205,7 @@ def set_esp32_target_url(url):
 
 
 def send_emotion_to_esp32(emotion, confidence):
-    """Sends emotion data to ESP32 via HTTP POST."""
+    """Sends emotion data to ESP32 via HTTP POST (non-blocking, fast)."""
     global ESP32_TARGET_URL
     
     if not ESP32_TARGET_URL:
@@ -217,24 +217,15 @@ def send_emotion_to_esp32(emotion, confidence):
             "confidence": float(confidence)
         }
         
+        # Çok kısa timeout - ESP32 meşgulse skip et
         response = requests.post(
             ESP32_TARGET_URL,
             json=payload,
-            timeout=2
+            timeout=0.5  # 500ms - daha hızlı
         )
         
-        if response.status_code == 200:
-            return True
-        else:
-            print(f"⚠️ ESP32 yanıt hatası: {response.status_code}")
-            return False
+        return response.status_code == 200
             
-    except requests.exceptions.Timeout:
-        print("⚠️ ESP32 bağlantı zaman aşımı")
-        return False
-    except requests.exceptions.ConnectionError:
-        print("⚠️ ESP32'ye bağlanılamadı")
-        return False
-    except Exception as e:
-        print(f"⚠️ ESP32 gönderim hatası: {e}")
+    except:
+        # Sessizce devam et - log spam'i yok
         return False

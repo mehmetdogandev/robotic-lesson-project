@@ -6,9 +6,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "deneyap.h"
-#include "esp_log.h"
-
-static const char *TAG = "oled_display";
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -43,14 +40,11 @@ bool oled_display_init() {
   if (display_initialized) {
     return true;
   }
-
-  ESP_LOGI(TAG, "OLED ekran baslatiliyor...");
   
   // I2C başlat - Deneyap Kart için SDA=D10, SCL=D11
   Wire.begin(SDA_PIN, SCL_PIN);
   
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS)) {
-    ESP_LOGE(TAG, "OLED ekran baslatilamadi!");
     return false;
   }
 
@@ -63,11 +57,10 @@ bool oled_display_init() {
   display.setCursor(10, 20);
   display.println("Deneyap");
   display.setCursor(10, 40);
-  display.println("Kamera");
+  display.println("Hazir");
   display.display();
   
-  ESP_LOGI(TAG, "OLED ekran basariyla baslatildi");
-  delay(2000);
+  delay(1500);
   
   return true;
 }
@@ -85,15 +78,12 @@ const char* translate_emotion(const char* emotion) {
 // Display emotion on OLED screen
 void oled_display_emotion(const char* emotion, float confidence) {
   if (!display_initialized) {
-    ESP_LOGW(TAG, "OLED ekran baslatilmamis, baslat...");
     if (!oled_display_init()) {
       return;
     }
   }
 
   const char* emotion_tr = translate_emotion(emotion);
-  
-  ESP_LOGI(TAG, "Ekranda gosteriliyor: %s (%.2f%%)", emotion_tr, confidence * 100);
 
   display.clearDisplay();
   

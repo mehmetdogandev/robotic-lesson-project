@@ -1176,21 +1176,22 @@ static esp_err_t face_mood_handler(httpd_req_t *req) {
     }
   }
 
-  ESP_LOGI(TAG, "Duygu alindi: %s (%.2f)", emotion, confidence);
-  
-  // Display on OLED
+  // Display on OLED (non-blocking, fast)
   oled_display_emotion(emotion, confidence);
 
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   httpd_resp_set_type(req, "application/json");
   
-  const char* response = "{\"status\":\"success\",\"message\":\"Emotion displayed on OLED\"}";
+  const char* response = "{\"status\":\"ok\"}";
   return httpd_resp_send(req, response, strlen(response));
 }
 
 void startCameraServer() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.max_uri_handlers = 16;
+  config.stack_size = 8192;  // Daha büyük stack (OLED için)
+  config.task_priority = 5;  // Yüksek öncelik
+  config.core_id = 0;        // Core 0'da çalış (Core 1 kamera için)
 
   httpd_uri_t index_uri = {
     .uri = "/",
@@ -1375,10 +1376,17 @@ void startCameraServer() {
     httpd_register_uri_handler(camera_httpd, &win_uri);
   }
 
-  config.server_port += 1;
-  config.ctrl_port += 1;
-  ESP_LOGI(TAG, "Starting stream server on port: '%d'", config.server_port);
-  if (httpd_start(&stream_httpd, &config) == ESP_OK) {
+  // Stream server için ayrı konfigürasyon (daha büyük stack, uzun bağlantılar için)
+  httpd_config_t stream_config = HTTPD_DEFAULT_CONFIG();
+  stream_config.server_port = 81;
+  stream_config.ctrl_port = 32769;
+  stream_config.stack_size = 4096;  // Stream için yeterli
+  stream_config.task_priority = 4;   // Biraz daha düşük (OLED'e öncelik)
+  stream_config.core_id = 1;         // Core 1'de çalış (kamera ile aynı)
+  stream_config.max_open_sockets = 4; // Daha fazla bağlantı
+  
+  ESP_LOGI(TAG, "Starting stream server on port: '%d'", stream_config.server_port);
+  if (httpd_start(&stream_httpd, &stream_config) == ESP_OK) {
     httpd_register_uri_handler(stream_httpd, &stream_uri);
   }
 }
