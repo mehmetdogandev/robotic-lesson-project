@@ -308,7 +308,7 @@ def current_emotions():
 def set_esp32_oled_url():
     """Set ESP32 OLED display target URL for emotion transmission.
     
-    JSON body: {"url": "http://10.64.220.72:2711/face_mood"}
+    JSON body: {"url": "http://10.64.220.189:2711/face_mood"}
     If url is empty or null, emotion transmission will be disabled.
     """
     try:

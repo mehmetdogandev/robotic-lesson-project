@@ -6,7 +6,7 @@ import requests
 import time
 import threading
 
-ESP32_IP = "10.64.220.72"  # ESP32 IP adresinizi girin
+ESP32_IP = "10.64.220.189"  # ESP32 IP adresinizi girin
 CAMERA_URL = f"http://{ESP32_IP}:81/stream"
 OLED_URL = f"http://{ESP32_IP}/face_mood"
 

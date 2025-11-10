@@ -344,7 +344,7 @@ Open these addresses in your browser:
 - 📊 Real-time settings display
 
 **Connection:**
-1. Enter ESP32 IP address (e.g., 10.64.220.72)
+1. Enter ESP32 IP address (e.g., 10.64.220.189)
 2. Click "Bağlan" (Connect)
 3. ESP controls panel will appear
 4. Click "Duygu Analizi İçin Optimize Et" for best settings
@@ -438,7 +438,7 @@ POST /esp_command
 Content-Type: application/json
 
 {
-  "ip": "10.64.220.72",
+  "ip": "10.64.220.189",
   "params": {
     "var": "framesize",
     "val": "8"
@@ -457,7 +457,7 @@ Content-Type: application/json
 
 ### 7. Get ESP32 Status
 ```http
-GET /esp_status?ip=10.64.220.72
+GET /esp_status?ip=10.64.220.189
 ```
 **Response:**
 ```json
@@ -485,7 +485,7 @@ POST /esp_apply_preset
 Content-Type: application/json
 
 {
-  "ip": "10.64.220.72"
+  "ip": "10.64.220.189"
 }
 ```
 **Response:**

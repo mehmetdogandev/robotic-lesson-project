@@ -11,7 +11,7 @@
 ```
 1. Web arayüzünü açın: http://localhost:5000
 2. IP giriş kutusuna ESP32'nin IP adresini yazın
-   Örnek: 10.64.220.72
+   Örnek: 10.64.220.189
 3. "Bağlan" butonuna tıklayın
 4. Video akışı ESP32'den gelmeye başlayacak
 ```
@@ -68,7 +68,7 @@
 1. ESP32'nin açık olduğundan emin olun
 2. IP adresini kontrol edin
 3. Aynı WiFi ağında olduğunuzu doğrulayın
-4. Ping testi: `ping 10.64.220.72`
+4. Ping testi: `ping 10.64.220.189`
 
 ### ❌ Görüntü Çok Karanlık
 **Çözüm:**

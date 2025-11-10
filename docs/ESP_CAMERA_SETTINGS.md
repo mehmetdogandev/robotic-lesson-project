@@ -188,7 +188,7 @@ raw_gma = 1
 await fetch('/esp_apply_preset', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ ip: '10.64.220.72' })
+    body: JSON.stringify({ ip: '10.64.220.189' })
 });
 ```
 
@@ -199,7 +199,7 @@ await fetch('/esp_command', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ 
-        ip: '10.64.220.72',
+        ip: '10.64.220.189',
         params: { var: 'brightness', val: '1' }
     })
 });
@@ -210,13 +210,13 @@ await fetch('/esp_command', {
 from modules import esp_client
 
 # Optimal ayarları uygula
-esp_client.apply_emotion_analysis_preset('10.64.220.72')
+esp_client.apply_emotion_analysis_preset('10.64.220.189')
 
 # Tek parametre değiştir
-esp_client.send_command('10.64.220.72', {'var': 'brightness', 'val': '1'})
+esp_client.send_command('10.64.220.189', {'var': 'brightness', 'val': '1'})
 
 # Mevcut ayarları oku
-status, settings = esp_client.get_status('10.64.220.72')
+status, settings = esp_client.get_status('10.64.220.189')
 print(settings)
 ```
 
@@ -239,7 +239,7 @@ print(settings)
 ESP'ye komut gönder
 ```json
 {
-    "ip": "10.64.220.72",
+    "ip": "10.64.220.189",
     "params": {
         "var": "framesize",
         "val": "8"
@@ -250,14 +250,14 @@ ESP'ye komut gönder
 ### `/esp_status` (GET)
 Mevcut ayarları oku
 ```
-GET /esp_status?ip=10.64.220.72
+GET /esp_status?ip=10.64.220.189
 ```
 
 ### `/esp_apply_preset` (POST)
 Optimal ayarları uygula
 ```json
 {
-    "ip": "10.64.220.72"
+    "ip": "10.64.220.189"
 }
 ```
 

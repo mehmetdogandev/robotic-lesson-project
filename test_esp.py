@@ -100,8 +100,8 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python test_esp.py <ESP32_IP> [--apply-preset]")
         print("\nExamples:")
-        print("  python test_esp.py 10.64.220.72")
-        print("  python test_esp.py 10.64.220.72 --apply-preset")
+        print("  python test_esp.py 10.64.220.189")
+        print("  python test_esp.py 10.64.220.189 --apply-preset")
         sys.exit(1)
     
     esp_ip = sys.argv[1]
