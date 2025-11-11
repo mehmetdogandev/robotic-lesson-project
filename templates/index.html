@@ -449,6 +449,29 @@
             if (!faceDetected) {
                 rtMain.textContent = '-';
                 rtMeta.textContent = `Durum: ${enabled ? 'Açık' : 'Kapalı'} • Yüz algılanmadı`;
+                // Yüz algılanmasa bile boş tablo göster
+                const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
+                order.forEach(k => {
+                    const row = document.createElement('div');
+                    row.className = 'emo-row';
+                    const label = document.createElement('span');
+                    label.className = 'label';
+                    label.textContent = trEmo[k] || k;
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    const fill = document.createElement('span');
+                    const color = emoColors[k] || '#66e0ff';
+                    fill.style.background = color;
+                    fill.style.boxShadow = `0 0 12px ${color}66`;
+                    fill.style.width = '0%';
+                    bar.appendChild(fill);
+                    const value = document.createElement('span');
+                    value.textContent = '0.0%';
+                    row.appendChild(label);
+                    row.appendChild(bar);
+                    row.appendChild(value);
+                    rtBars.appendChild(row);
+                });
                 return;
             }
 

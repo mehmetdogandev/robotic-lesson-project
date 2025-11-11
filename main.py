@@ -58,8 +58,8 @@ def video_feed():
         face_mesh_local = mp_face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=1)
         mp_drawing = mp.solutions.drawing_utils
         
-        # Temporal smoother for remote stream
-        emotion_smoother = TemporalSmoother(maxlen=8, ema_alpha=0.6)
+        # Temporal smoother - iyileştirilmiş parametrelerle
+        emotion_smoother = TemporalSmoother(maxlen=10, ema_alpha=0.7)
         last_danger_check = 0
         
         url = f'http://{ip}:81/stream'

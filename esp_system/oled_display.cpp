@@ -54,9 +54,12 @@ bool oled_display_init() {
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(10, 20);
-  display.println("Deneyap");
-  display.setCursor(10, 40);
+  display.setCursor(12, 20);           
+  display.println("Mini Yalan");
+
+  // "Hazir" = 5 karakter → 5*6 = 30px
+  // (128 - 30) / 2 = 49px
+  display.setCursor(49, 35);           
   display.println("Hazir");
   display.display();
   

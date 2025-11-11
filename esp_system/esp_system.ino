@@ -23,6 +23,7 @@
 // WiFi ayarları
 const char* ssid = "Memet";          // Bağlantı kurulacak Wi-Fi ağı adı
 const char* password = "aaaa11112";  // Bağlantı kurulacak Wi-Fi ağı şifresi
+const char* deviceHostname = "mini-yalan-makinesi";
 
 // Fonksiyon prototipleri
 void cameraInit(void);
@@ -38,7 +39,9 @@ void setup() {
 
   // Kamera konfigurasyonu yapıldı
   cameraInit();
-
+// >>>>>>>>> BURAYA EKLE <<<<<<<<<<<<<
+WiFi.setHostname(deviceHostname);
+// >>>>>>>>> BURAYA EKLE <<<<<<<<<<<<<
   Serial.println();
   Serial.println("Wi-Fi agina baglaniliyor...");
   WiFi.begin(ssid, password);  // Wi-Fi ağına bağlanılıyor

@@ -8,10 +8,13 @@ CAPTURE_DIR = "static/captured"
 os.makedirs(CAPTURE_DIR, exist_ok=True)
 
 # Analysis parameters
-ANALYSIS_INTERVAL = 5     # analyze every 5 frames
-HISTORY_SIZE = 3           # average of last 3 analyses
+ANALYSIS_INTERVAL = 3     # analyze every 3 frames (daha sık analiz için optimize edildi)
+HISTORY_SIZE = 5           # average of last 5 analyses (daha fazla smoothing)
 DANGER_THRESHOLD = 70     # danger threshold (angry+fear+disgust sum)
 FACE_SIMILARITY_THRESHOLD = 0.6  # face similarity threshold (0-1 range, lower=stricter)
+
+# Emotion analysis optimization
+EMOTION_CONFIDENCE_THRESHOLD = 35.0  # minimum emotion confidence to consider valid (%)
 
 # Detection status
 DETECTION_ENABLED = True

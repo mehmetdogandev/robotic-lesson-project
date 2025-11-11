@@ -33,8 +33,8 @@ class CameraStream:
         self.remote_ip = None
         # small backoff between remote fetches to avoid overloading ESP
         self._remote_delay = 0.1
-        # temporal smoother for emotion probabilities (single-stream fallback)
-        self.emotion_smoother = TemporalSmoother(maxlen=8, ema_alpha=0.6)
+        # temporal smoother - iyileştirilmiş parametrelerle
+        self.emotion_smoother = TemporalSmoother(maxlen=10, ema_alpha=0.7)
     
     def set_detection(self, enabled):
         """Sets detection status."""
