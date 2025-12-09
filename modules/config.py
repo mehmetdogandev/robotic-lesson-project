@@ -36,7 +36,13 @@ latest_state = {
     "emotions": None,
     "main_emotion": None,
     "danger_score": 0.0,
+    "age": None,  # Estimated age
+    "age_category": None,  # Age category
 }
+
+# Age detection settings
+AGE_DETECTION_ENABLED = True  # Enable/disable age detection
+AGE_SMOOTHING_WINDOW = 5  # Number of frames for age smoothing
 
 # ESP32 Camera optimal settings for emotion analysis
 ESP_OPTIMAL_SETTINGS = {

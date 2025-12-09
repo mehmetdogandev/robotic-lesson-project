@@ -12,7 +12,7 @@ from modules.config import (
 )
 from modules.face_analysis import (
     analyze_emotions, get_average_emotions, calculate_danger_score,
-    get_face_embedding, is_registered_dangerous_person, register_dangerous_person
+    get_face_embedding, is_registered_dangerous_person, register_dangerous_person, analyze_age
 )
 from modules.face_analysis import TemporalSmoother, emotions_dict_to_vector, vector_to_emotions_dict, preprocess_face
 from modules.storage import save_dangerous_person
@@ -75,13 +75,19 @@ class CameraStream:
         emotion_text = f"Baskin Duygu: {emotion_labels.get(main_emotion, main_emotion)} ({avg_emotions.get(main_emotion, 0):.1f}%)"
         cv2.putText(frame, emotion_text, (10, y0), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     
+    def draw_age_info(self, frame, age, age_category, y0=30):
+        """Draws age information on frame."""
+        if age and age_category:
+            age_text = f"Yas: {age} ({age_category})"
+            cv2.putText(frame, age_text, (10, y0 + 35), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 200, 0), 2)
+    
     def draw_detection_status(self, frame, y0=30):
         """Draws warning if detection is off."""
         if not self.detection_enabled:
             cv2.putText(frame, "ALGILAMA KAPALI", (10, y0 + 60), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (128, 128, 128), 3)
     
-    def handle_danger_detection(self, frame, rgb, avg_emotions, y0=30):
+    def handle_danger_detection(self, frame, rgb, avg_emotions, age=None, age_category=None, y0=30):
         """Handles dangerous situation detection."""
         current_time = time.time()
         
@@ -91,15 +97,18 @@ class CameraStream:
             is_registered, existing_id = is_registered_dangerous_person(face_embedding)
             
             if not is_registered and face_embedding is not None:
-                # New dangerous person - save
+                # New dangerous person - save with age info
                 person_id = str(uuid.uuid4())[:8]
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
                 
-                save_dangerous_person(person_id, timestamp, frame, avg_emotions)
+                save_dangerous_person(person_id, timestamp, frame, avg_emotions, age, age_category)
                 register_dangerous_person(person_id, face_embedding)
                 
-                cv2.putText(frame, f"DANGEROUS PERSON! (NEW: {person_id})", (10, y0 + 60), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+                alert_text = f"DANGEROUS PERSON! (NEW: {person_id})"
+                if age:
+                    alert_text += f" - Age: {age}"
+                cv2.putText(frame, alert_text, (10, y0 + 70), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
             
             elif is_registered:
                 # Registered dangerous person
@@ -163,6 +172,12 @@ class CameraStream:
             
             # Calculate average emotions
             avg_emotions, main_emotion = get_average_emotions()
+            
+            # Analyze age (every 6 frames for performance - less frequent than emotions)
+            estimated_age = None
+            age_category = None
+            if self.detection_enabled and frame_count % (ANALYSIS_INTERVAL * 2) == 0:
+                estimated_age, age_category = analyze_age(rgb)
 
             # Apply temporal smoothing to the averaged emotions for stability
             if avg_emotions:
@@ -181,6 +196,8 @@ class CameraStream:
             latest_state["emotions"] = avg_emotions if avg_emotions else None
             latest_state["main_emotion"] = main_emotion
             latest_state["danger_score"] = float(danger_score)
+            latest_state["age"] = estimated_age
+            latest_state["age_category"] = age_category
             
             # Send emotion to ESP32 OLED if URL is configured
             from modules.face_analysis import send_emotion_to_esp32, ESP32_TARGET_URL
@@ -191,11 +208,12 @@ class CameraStream:
             # Draw information on frame
             y0 = 30
             self.draw_emotion_info(frame, main_emotion, avg_emotions, y0)
+            self.draw_age_info(frame, estimated_age, age_category, y0)
             self.draw_detection_status(frame, y0)
             
             # Check for dangerous situation
             if danger:
-                self.handle_danger_detection(frame, rgb, avg_emotions, y0)
+                self.handle_danger_detection(frame, rgb, avg_emotions, estimated_age, age_category, y0)
             
             # Encode frame and yield
             ret, buffer = cv2.imencode('.jpg', frame)

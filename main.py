@@ -48,9 +48,10 @@ def video_feed():
         from modules.face_analysis import (
             analyze_emotions, get_average_emotions, calculate_danger_score,
             get_face_embedding, is_registered_dangerous_person, register_dangerous_person,
-            TemporalSmoother, emotions_dict_to_vector, vector_to_emotions_dict
+            TemporalSmoother, emotions_dict_to_vector, vector_to_emotions_dict, analyze_age
         )
         from modules.storage import save_dangerous_person
+        from modules.async_processor import AsyncVideoProcessor
         import uuid
         
         # MediaPipe Face Mesh (local instance for this generator)
@@ -66,16 +67,19 @@ def video_feed():
 
         def gen_from_ip_with_analysis():
             nonlocal last_danger_check
-            cap = cv2.VideoCapture(url)
-            frame_count = 0
+            
+            # Use Async Processor for better performance
+            processor = AsyncVideoProcessor(url)
+            processor.start()
             
             try:
                 while True:
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
+                    frame = processor.get_frame()
+                    if frame is None:
+                        time.sleep(0.01)
+                        continue
                     
-                    # Convert to RGB for analysis
+                    # Convert to RGB for FaceMesh (fast)
                     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     
                     # Draw face mesh
@@ -90,12 +94,11 @@ def video_feed():
                                 connection_drawing_spec=mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=1)
                             )
                     
-                    # Perform emotion analysis at intervals
-                    if camera_stream.is_detection_enabled() and frame_count % ANALYSIS_INTERVAL == 0:
-                        analyze_emotions(rgb)
-                    
-                    # Get average emotions
+                    # Get average emotions (updated by async thread)
                     avg_emotions, main_emotion = get_average_emotions()
+                    
+                    # Get age info (updated by async thread)
+                    estimated_age, age_category = processor.get_age_info()
                     
                     # Apply temporal smoothing
                     if avg_emotions:
@@ -114,6 +117,8 @@ def video_feed():
                     latest_state["emotions"] = avg_emotions if avg_emotions else None
                     latest_state["main_emotion"] = main_emotion
                     latest_state["danger_score"] = float(danger_score)
+                    latest_state["age"] = estimated_age
+                    latest_state["age_category"] = age_category
                     
                     # Send emotion to ESP32 OLED if URL is configured
                     if main_emotion and avg_emotions and face_analysis.ESP32_TARGET_URL:
@@ -125,6 +130,11 @@ def video_feed():
                     if avg_emotions and main_emotion:
                         emotion_text = f"Baskin Duygu: {emotion_labels.get(main_emotion, main_emotion)} ({avg_emotions.get(main_emotion, 0):.1f}%)"
                         cv2.putText(frame, emotion_text, (10, y0), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                    
+                    # Draw age info on frame
+                    if estimated_age and age_category:
+                        age_text = f"Yas: {estimated_age} ({age_category})"
+                        cv2.putText(frame, age_text, (10, y0 + 35), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 200, 0), 2)
                     
                     # Draw detection status
                     if not camera_stream.is_detection_enabled():
@@ -141,10 +151,17 @@ def video_feed():
                             if not is_registered and face_embedding is not None:
                                 person_id = str(uuid.uuid4())[:8]
                                 timestamp = time.strftime("%Y%m%d-%H%M%S")
-                                save_dangerous_person(person_id, timestamp, frame, avg_emotions)
+                                # Save with age information
+                                save_dangerous_person(person_id, timestamp, frame, avg_emotions, 
+                                                    estimated_age, age_category)
                                 register_dangerous_person(person_id, face_embedding)
-                                cv2.putText(frame, f"DANGEROUS PERSON! (NEW: {person_id})", (10, y0 + 60), 
-                                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+                                
+                                # Display danger alert with age info
+                                alert_text = f"DANGEROUS PERSON! (NEW: {person_id})"
+                                if estimated_age:
+                                    alert_text += f" - Age: {estimated_age}"
+                                cv2.putText(frame, alert_text, (10, y0 + 70), 
+                                           cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
                             elif is_registered:
                                 print(f"✓ Registered dangerous person detected: {existing_id}")
                                 cv2.putText(frame, f"REGISTERED DANGEROUS PERSON: {existing_id}", (10, y0 + 60), 
@@ -163,10 +180,8 @@ def video_feed():
                     yield (b'--frame\r\n'
                            b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
                     
-                    frame_count += 1
-                    
             finally:
-                cap.release()
+                processor.stop()
 
         return Response(gen_from_ip_with_analysis(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
@@ -293,13 +308,15 @@ def status():
 
 @app.route('/current_emotions')
 def current_emotions():
-    """Returns current emotion data."""
+    """Returns current emotion data including age information."""
     data = {
         "enabled": camera_stream.is_detection_enabled(),
         "timestamp": latest_state.get("timestamp"),
         "emotions": latest_state.get("emotions"),
         "main_emotion": latest_state.get("main_emotion"),
         "danger_score": latest_state.get("danger_score"),
+        "age": latest_state.get("age"),
+        "age_category": latest_state.get("age_category"),
     }
     return jsonify(data)
 

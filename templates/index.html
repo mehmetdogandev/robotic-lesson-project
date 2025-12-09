@@ -2,172 +2,778 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Canlı Duygu Analizi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duygu Analizi Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root{
-            --bg: #0b1020;
-            --panel: #0f172a;
-            --card: #111827;
-            --text: #e5e7eb;
-            --muted: #94a3b8;
-            --accent: #00e5ff;
-            --accent-2: #8b5cf6;
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #0f1419;
+            --bg-tertiary: #141920;
+            --surface: #1a1f2e;
+            --surface-hover: #1f2433;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --text-muted: #718096;
+            --accent-cyan: #00d9ff;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border: rgba(255,255,255,0.06);
+            --shadow: 0 10px 40px -10px rgba(0,0,0,0.4);
+            --glow: 0 0 20px rgba(0,217,255,0.3);
         }
-        *{ box-sizing: border-box; }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            text-align: center;
-            color: var(--text);
-            background:
-                radial-gradient(1200px 600px at 10% -20%, #0b3a4a 0%, transparent 60%),
-                radial-gradient(800px 400px at 110% 10%, #2a104a 0%, transparent 60%),
-                linear-gradient(180deg, var(--bg), #060914 60%);
-            min-height: 100vh;
-            margin: 0;
-            padding-bottom: 32px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
         }
-        h1 {
-            margin: 20px 0 8px;
-            background: linear-gradient(90deg, var(--accent), #66e0ff, var(--accent-2));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: 0.5px;
-            text-shadow: 0 0 20px rgba(0,229,255,0.25);
+        
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(0,217,255,0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139,92,246,0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 90%, rgba(59,130,246,0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
-        .live {
-            margin-top: 15px;
-            border-radius: 16px;
-            border: 0;
-            box-shadow: 0 0 0 1px rgba(0,229,255,0.18), 0 18px 40px -20px rgba(0,229,255,0.45);
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--surface) 0%, var(--bg-tertiary) 100%);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            z-index: 100;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+            overflow-y: auto;
         }
-        #panel {
-            margin: 24px auto;
-            max-width: 1400px;
-            text-align: left;
-            padding: 0 16px;
-        }
-        #liveArea {
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-            justify-content: center;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        #liveArea img {
-            flex: 0 0 auto;
-            max-width: 640px;
-        }
-        #realtimeContainer {
-            flex: 0 0 320px;
-            min-width: 280px;
-        }
-        .toolbar {
+        
+        .logo {
             display: flex;
             align-items: center;
             gap: 12px;
-            justify-content: center;
-            margin-top: 20px;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
         }
-        .btn{
-            padding: 10px 18px;
+        
+        .logo i {
+            font-size: 32px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(var(--glow));
+        }
+        
+        .logo-text h2 {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .logo-text p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        .nav-section {
+            margin-bottom: 24px;
+        }
+        
+        .nav-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
             border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
-            color: var(--text);
+            color: var(--text-secondary);
             cursor: pointer;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 8px 20px -12px rgba(0,0,0,0.5);
-            transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+            transition: all 0.3s ease;
+            margin-bottom: 4px;
         }
-        .btn:hover{ transform: translateY(-1px); box-shadow: 0 12px 28px -16px rgba(0,0,0,0.7); }
-        .btn:active{ transform: translateY(0); }
-        .btn-primary{ border-color: rgba(0,229,255,0.25); background: linear-gradient(180deg, rgba(0,229,255,0.12), rgba(0,229,255,0.08)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 8px 20px -12px rgba(0,229,255,0.5); }
-        .btn-green{ border-color: rgba(34,197,94,0.25); background: linear-gradient(180deg, rgba(34,197,94,0.18), rgba(34,197,94,0.10)); }
-        .btn-red{ border-color: rgba(239,68,68,0.25); background: linear-gradient(180deg, rgba(239,68,68,0.18), rgba(239,68,68,0.10)); }
-        #count{ color: var(--muted); }
-
-        #cards {
+        
+        .nav-item:hover {
+            background: var(--surface-hover);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(0,217,255,0.15), rgba(59,130,246,0.15));
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0,217,255,0.3);
+        }
+        
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 24px;
+            min-height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Top Bar */
+        .top-bar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+        
+        .page-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .page-title p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 999px;
+            font-size: 13px;
+            color: var(--success);
+        }
+        
+        .status-badge.inactive {
+            background: rgba(239,68,68,0.1);
+            border-color: rgba(239,68,68,0.3);
+            color: var(--danger);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+        
+        .control-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 18px;
-            margin-top: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
         }
-        .card {
-            background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--card);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 14px;
-            box-shadow: 0 10px 30px -18px rgba(0,0,0,0.6);
+        
+        .control-group {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .control-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0,217,255,0.1);
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -8px rgba(0,0,0,0.5);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border: none;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,217,255,0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            border: none;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            border: none;
+            color: white;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        /* Video Container */
+        .video-section {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .video-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            position: relative;
             overflow: hidden;
-            transform: translateY(8px);
-            animation: fadeInUp .6s ease both;
-            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         }
-        .card:hover{
-            transform: translateY(0) scale(1.01);
-            box-shadow: 0 20px 48px -18px rgba(0,229,255,0.25);
-            border-color: rgba(0,229,255,0.18);
+        
+        .video-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
         }
-        .card img { width: 100%; height: 180px; object-fit: cover; border: 0; border-radius: 0; filter: saturate(1.05) contrast(1.02); }
-        .card .body { padding: 12px 14px 14px; }
-        .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-        .title { font-weight: 600; color: #f3f4f6; }
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            background: rgba(0,229,255,0.14);
-            color: #b3f7ff;
-            border: 1px solid rgba(0,229,255,0.25);
+        
+        .video-wrapper {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+        
+        #liveImg {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 12px;
+        }
+        
+        /* Realtime Stats */
+        .realtime-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .emotion-badge {
+            padding: 6px 12px;
             border-radius: 999px;
             font-size: 12px;
-            margin-left: 6px;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+            font-weight: 600;
+            background: linear-gradient(135deg, rgba(0,217,255,0.2), rgba(59,130,246,0.2));
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
         }
-        .emotions { margin-top: 10px; }
-        .emo-row { display:flex; align-items:center; gap:10px; font-size:12px; color:#cbd5e1; }
-        .emo-row .label{ width: 88px; flex: 0 0 88px; color:#a3b2c7; }
-        .bar { flex:1; background: rgba(255,255,255,0.06); height:8px; border-radius:999px; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.35); }
-        .bar > span { display:block; height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #66e0ff); border-radius:999px; transition: width .8s cubic-bezier(.22,.9,.31,1); box-shadow: 0 0 12px rgba(0,229,255,0.35); }
-        .grid { display:grid; grid-template-columns: 1fr; gap:8px; }
-
+        
+        .emo-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        
+        .emo-label {
+            width: 90px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .emo-bar {
+            flex: 1;
+            height: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .emo-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .emo-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            to { left: 100%; }
+        }
+        
+        .emo-value {
+            min-width: 45px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Gallery Grid */
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .gallery-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .gallery-count {
+            padding: 6px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        
+        #cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.6s ease backwards;
+        }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -10px rgba(0,217,255,0.3);
+            border-color: var(--accent-cyan);
+        }
+        
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .card-body {
+            padding: 16px;
+        }
+        
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .card-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        
+        .card-emotions {
+            display: grid;
+            gap: 8px;
+        }
+        
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(8px); }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        /* Range Input Styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--bg-tertiary);
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,217,255,0.4);
+            transition: all 0.3s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(0,217,255,0.6);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,217,255,0.4);
+        }
+        
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--surface-hover);
+            border-radius: 999px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+        
+        /* ESP Controls */
+        #espControls {
+            background: var(--surface);
+            border: 1px solid rgba(0,217,255,0.2);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+        
+        .esp-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .esp-header h3 {
+            font-size: 18px;
+            color: var(--accent-cyan);
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .video-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>🎥 Canlı Duygu Analizi</h1>
-    
-    <div id="panel">
-        <div class="toolbar">
-            <input id="ipInput" type="text" placeholder="Kamera IP (örn. 10.64.220.189)" value="10.64.220.189" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);width:200px">
-            <button id="btnConnect" class="btn btn-primary">Bağlan</button>
-            <button id="btnDisconnect" class="btn">Yerel Kamera</button>
-            <button id="btnStart" class="btn btn-green">Algılamayı Aç</button>
-            <button id="btnStop" class="btn btn-red">Algılamayı Kapat</button>
-            <button id="refresh" class="btn btn-primary">Paneli Yenile</button>
-            <span id="status" class="meta"></span>
-            <span id="count" class="meta"></span>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-robot"></i>
+            <div class="logo-text">
+                <h2>EmotionAI</h2>
+                <p>Duygu Analiz Sistemi</p>
+            </div>
         </div>
         
-        <!-- ESP Camera Controls - Only shown when connected -->
-        <div id="espControls" style="display:none; margin-top:16px; padding:16px; background:var(--card); border-radius:12px; border:1px solid rgba(0,229,255,0.2);">
-            <h3 style="margin:0 0 12px 0; font-size:16px; color:var(--accent);">⚙️ ESP32 Kamera Ayarları</h3>
+        <div class="nav-section">
+            <div class="nav-title">Ana Menü</div>
+            <div class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-video"></i>
+                <span>Canlı İzleme</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>İstatistikler</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-images"></i>
+                <span>Galeri</span>
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-title">Kamera Ayarları</div>
+            <div class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>ESP32 Kamera</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-sliders-h"></i>
+                <span>Görüntü Ayarları</span>
+            </div>
+        </div>
+        
+        <div class="nav-section">
+            <div class="nav-title">Sistem</div>
+            <div class="nav-item">
+                <i class="fas fa-info-circle"></i>
+                <span>Yardım</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="page-title">
+                <h1><i class="fas fa-brain"></i> Duygu Analizi Dashboard</h1>
+                <p>Gerçek zamanlı yüz tanıma ve duygu analizi sistemi</p>
+            </div>
+            <div>
+                <div class="status-badge" id="statusBadge">
+                    <span class="status-dot"></span>
+                    <span id="status">Bekleniyor...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-sliders-h"></i> Kontrol Paneli
+                </div>
+                <div class="gallery-count" id="count">0 kayıt</div>
+            </div>
+            
+            <div class="control-grid">
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-network-wired"></i> Kamera IP Adresi
+                    </div>
+                    <input id="ipInput" type="text" class="control-input" placeholder="örn: 10.64.220.189" value="10.64.220.189">
+                </div>
+                
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-link"></i> Bağlantı
+                    </div>
+                    <div class="btn-group">
+                        <button id="btnConnect" class="btn btn-primary">
+                            <i class="fas fa-plug"></i> Bağlan
+                        </button>
+                        <button id="btnDisconnect" class="btn">
+                            <i class="fas fa-camera"></i> Yerel Kamera
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-brain"></i> Algılama Kontrolü
+                    </div>
+                    <div class="btn-group">
+                        <button id="btnStart" class="btn btn-success">
+                            <i class="fas fa-play"></i> Başlat
+                        </button>
+                        <button id="btnStop" class="btn btn-danger">
+                            <i class="fas fa-stop"></i> Durdur
+                        </button>
+                        <button id="refresh" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i> Yenile
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ESP Camera Controls -->
+        <div id="espControls" style="display:none;">
+            <div class="esp-header">
+                <i class="fas fa-cog"></i>
+                <h3>ESP32 Kamera Ayarları</h3>
+            </div>
             
             <!-- Preset Buttons -->
-            <div style="margin-bottom:16px; padding:12px; background:rgba(0,229,255,0.05); border-radius:8px;">
-                <div style="margin-bottom:8px; color:var(--muted); font-size:13px;">🎯 Önceden Tanımlı Ayarlar:</div>
-                <button class="btn btn-primary" onclick="applyOptimalPreset()">✨ Duygu Analizi İçin Optimize Et</button>
-                <button class="btn" onclick="refreshESPStatus()">🔄 Mevcut Ayarları Göster</button>
+            <div style="margin-bottom:20px; padding:16px; background:var(--bg-tertiary); border-radius:12px; border:1px solid var(--border);">
+                <div style="margin-bottom:12px; color:var(--text-muted); font-size:13px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-magic"></i> Hızlı Ayarlar
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="applyOptimalPreset()">
+                        <i class="fas fa-sparkles"></i> Optimize Et
+                    </button>
+                    <button class="btn" onclick="refreshESPStatus()">
+                        <i class="fas fa-sync"></i> Ayarları Göster
+                    </button>
+                </div>
             </div>
             
             <!-- Manual Controls -->
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
                 <!-- Resolution -->
-                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">📐 Çözünürlük</div>
-                    <select id="framesize" onchange="setESPParam('framesize', this.value)" style="width:100%; padding:8px; border-radius:6px; background:var(--panel); color:var(--text); border:1px solid rgba(255,255,255,0.1);">
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-expand"></i> Çözünürlük
+                    </div>
+                    <select id="framesize" onchange="setESPParam('framesize', this.value)" class="control-input">
                         <option value="10">UXGA (1600x1200)</option>
                         <option value="9">SXGA (1280x1024)</option>
                         <option value="8" selected>XGA (1024x768) ⭐</option>
@@ -179,37 +785,47 @@
                 </div>
                 
                 <!-- Quality -->
-                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🎨 JPEG Kalitesi</div>
-                    <input type="range" id="quality" min="10" max="63" value="10" oninput="setESPParam('quality', this.value); document.getElementById('qualityVal').textContent=this.value" style="width:100%;">
-                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="qualityVal">10</span> (10=En İyi)</div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-image"></i> JPEG Kalitesi
+                    </div>
+                    <input type="range" id="quality" min="10" max="63" value="10" oninput="setESPParam('quality', this.value); document.getElementById('qualityVal').textContent=this.value" style="width:100%; margin-bottom:4px;">
+                    <div style="font-size:12px; color:var(--text-muted);">Değer: <span id="qualityVal">10</span> (10=En İyi)</div>
                 </div>
                 
                 <!-- Brightness -->
-                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">☀️ Parlaklık</div>
-                    <input type="range" id="brightness" min="-2" max="2" value="0" oninput="setESPParam('brightness', this.value); document.getElementById('brightnessVal').textContent=this.value" style="width:100%;">
-                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="brightnessVal">0</span></div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-sun"></i> Parlaklık
+                    </div>
+                    <input type="range" id="brightness" min="-2" max="2" value="0" oninput="setESPParam('brightness', this.value); document.getElementById('brightnessVal').textContent=this.value" style="width:100%; margin-bottom:4px;">
+                    <div style="font-size:12px; color:var(--text-muted);">Değer: <span id="brightnessVal">0</span></div>
                 </div>
                 
                 <!-- Contrast -->
-                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🔲 Kontrast</div>
-                    <input type="range" id="contrast" min="-2" max="2" value="0" oninput="setESPParam('contrast', this.value); document.getElementById('contrastVal').textContent=this.value" style="width:100%;">
-                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="contrastVal">0</span></div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-adjust"></i> Kontrast
+                    </div>
+                    <input type="range" id="contrast" min="-2" max="2" value="0" oninput="setESPParam('contrast', this.value); document.getElementById('contrastVal').textContent=this.value" style="width:100%; margin-bottom:4px;">
+                    <div style="font-size:12px; color:var(--text-muted);">Değer: <span id="contrastVal">0</span></div>
                 </div>
                 
                 <!-- Saturation -->
-                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🌈 Doygunluk</div>
-                    <input type="range" id="saturation" min="-2" max="2" value="0" oninput="setESPParam('saturation', this.value); document.getElementById('saturationVal').textContent=this.value" style="width:100%;">
-                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">Değer: <span id="saturationVal">0</span></div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-palette"></i> Doygunluk
+                    </div>
+                    <input type="range" id="saturation" min="-2" max="2" value="0" oninput="setESPParam('saturation', this.value); document.getElementById('saturationVal').textContent=this.value" style="width:100%; margin-bottom:4px;">
+                    <div style="font-size:12px; color:var(--text-muted);">Değer: <span id="saturationVal">0</span></div>
                 </div>
                 
                 <!-- Special Effect -->
-                <div style="padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-                    <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">✨ Özel Efekt</div>
-                    <select id="special_effect" onchange="setESPParam('special_effect', this.value)" style="width:100%; padding:8px; border-radius:6px; background:var(--panel); color:var(--text); border:1px solid rgba(255,255,255,0.1);">
+                <div class="control-group">
+                    <div class="control-label">
+                        <i class="fas fa-magic"></i> Özel Efekt
+                    </div>
+                    <select id="special_effect" onchange="setESPParam('special_effect', this.value)" class="control-input">
                         <option value="0">Yok</option>
                         <option value="1">Negatif</option>
                         <option value="2">Gri Tonlama</option>
@@ -222,74 +838,119 @@
             </div>
             
             <!-- Auto Settings -->
-            <div style="margin-top:12px; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.06);">
-                <div style="color:var(--muted); font-size:12px; margin-bottom:8px;">🤖 Otomatik Ayarlar</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="awb" onchange="setESPParam('awb', this.checked?1:0)" checked>
-                        <span style="font-size:13px;">Auto White Balance</span>
+            <div style="margin-top:20px; padding:16px; background:var(--bg-tertiary); border-radius:12px; border:1px solid var(--border);">
+                <div style="color:var(--text-muted); font-size:13px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-robot"></i> Otomatik Ayarlar
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border); transition:all 0.3s;">
+                        <input type="checkbox" id="awb" onchange="setESPParam('awb', this.checked?1:0)" checked style="accent-color:var(--accent-cyan);">
+                        <span style="font-size:13px; color:var(--text-secondary);">Auto White Balance</span>
                     </label>
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="aec" onchange="setESPParam('aec', this.checked?1:0)" checked>
-                        <span style="font-size:13px;">Auto Exposure</span>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border); transition:all 0.3s;">
+                        <input type="checkbox" id="aec" onchange="setESPParam('aec', this.checked?1:0)" checked style="accent-color:var(--accent-cyan);">
+                        <span style="font-size:13px; color:var(--text-secondary);">Auto Exposure</span>
                     </label>
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="agc" onchange="setESPParam('agc', this.checked?1:0)" checked>
-                        <span style="font-size:13px;">Auto Gain</span>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border); transition:all 0.3s;">
+                        <input type="checkbox" id="agc" onchange="setESPParam('agc', this.checked?1:0)" checked style="accent-color:var(--accent-cyan);">
+                        <span style="font-size:13px; color:var(--text-secondary);">Auto Gain</span>
                     </label>
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="awb_gain" onchange="setESPParam('awb_gain', this.checked?1:0)" checked>
-                        <span style="font-size:13px;">AWB Gain</span>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border); transition:all 0.3s;">
+                        <input type="checkbox" id="awb_gain" onchange="setESPParam('awb_gain', this.checked?1:0)" checked style="accent-color:var(--accent-cyan);">
+                        <span style="font-size:13px; color:var(--text-secondary);">AWB Gain</span>
                     </label>
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="lenc" onchange="setESPParam('lenc', this.checked?1:0)" checked>
-                        <span style="font-size:13px;">Lens Düzeltme</span>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border); transition:all 0.3s;">
+                        <input type="checkbox" id="lenc" onchange="setESPParam('lenc', this.checked?1:0)" checked style="accent-color:var(--accent-cyan);">
+                        <span style="font-size:13px; color:var(--text-secondary);">Lens Düzeltme</span>
                     </label>
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="hmirror" onchange="setESPParam('hmirror', this.checked?1:0)">
-                        <span style="font-size:13px;">Yatay Ayna</span>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border); transition:all 0.3s;">
+                        <input type="checkbox" id="hmirror" onchange="setESPParam('hmirror', this.checked?1:0)" style="accent-color:var(--accent-cyan);">
+                        <span style="font-size:13px; color:var(--text-secondary);">Yatay Ayna</span>
                     </label>
-                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="vflip" onchange="setESPParam('vflip', this.checked?1:0)">
-                        <span style="font-size:13px;">Dikey Çevir</span>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border); transition:all 0.3s;">
+                        <input type="checkbox" id="vflip" onchange="setESPParam('vflip', this.checked?1:0)" style="accent-color:var(--accent-cyan);">
+                        <span style="font-size:13px; color:var(--text-secondary);">Dikey Çevir</span>
                     </label>
                 </div>
             </div>
             
             <!-- Status Display -->
-            <div id="espStatusDisplay" style="margin-top:12px; padding:12px; background:rgba(139,92,246,0.1); border-radius:8px; border:1px solid rgba(139,92,246,0.2); display:none;">
-                <div style="color:var(--accent-2); font-size:13px; font-weight:600; margin-bottom:8px;">📊 Mevcut Ayarlar</div>
-                <div id="espStatusContent" style="font-size:12px; color:var(--muted); line-height:1.6;"></div>
+            <div id="espStatusDisplay" style="margin-top:20px; padding:16px; background:linear-gradient(135deg, rgba(139,92,246,0.1), rgba(59,130,246,0.1)); border-radius:12px; border:1px solid rgba(139,92,246,0.3); display:none;">
+                <div style="color:var(--accent-purple); font-size:14px; font-weight:600; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-info-circle"></i> Mevcut Ayarlar
+                </div>
+                <div id="espStatusContent" style="font-size:13px; color:var(--text-secondary); line-height:1.8;"></div>
             </div>
         </div>
         
-        <div id="liveArea">
-            <img id="liveImg" class="live" src="{{ url_for('video_feed') }}" width="640" height="480" alt="Canlı Yayın">
-            <div id="realtimeContainer">
-                <div id="realtime" class="card">
-                    <div class="body">
-                        <div class="title">Anlık Duygular <span id="rt-main" class="badge">-</span></div>
-                        <div class="meta" id="rt-meta">Durum: -</div>
-                        <div id="rt-bars" class="emotions grid"></div>
+        <!-- Video & Realtime Section -->
+        <div class="video-section">
+            <div class="video-container">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class="fas fa-video"></i> Canlı Video Yayını
                     </div>
                 </div>
+                <div class="video-wrapper">
+                    <img id="liveImg" src="{{ url_for('video_feed') }}" alt="Canlı Yayın">
+                </div>
+            </div>
+            
+            <div class="realtime-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class="fas fa-chart-bar"></i> Anlık Duygular
+                    </div>
+                    <span id="rt-main" class="emotion-badge">-</span>
+                </div>
+                <div id="rt-meta" style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">Durum: Bekleniyor...</div>
+                <div id="rt-bars"></div>
             </div>
         </div>
         
+        <!-- Gallery Section -->
+        <div class="gallery-header">
+            <div class="gallery-title">
+                <i class="fas fa-images"></i> Kayıtlı Analizler
+            </div>
+            <button id="galleryRefresh" class="btn btn-primary" onclick="loadPanel()">
+                <i class="fas fa-sync-alt"></i> Yenile
+            </button>
+        </div>
         <div id="cards"></div>
     </div>
 
     <script>
-        const trEmo = { happy: 'Mutlu', sad: 'Üzgün', angry: 'Kızgın', surprise: 'Şaşırmış', fear: 'Korkmuş', disgust: 'Tiksinmiş', neutral: 'Nötr' };
+        const trEmo = { 
+            happy: 'Mutlu', 
+            sad: 'Üzgün', 
+            angry: 'Kızgın', 
+            surprise: 'Şaşırmış', 
+            fear: 'Korkmuş', 
+            disgust: 'Tiksinmiş', 
+            neutral: 'Nötr' 
+        };
+        
         const emoColors = {
             angry: '#ef4444',
             fear: '#a855f7',
-            disgust: '#22c55e',
+            disgust: '#10b981',
             sad: '#3b82f6',
             surprise: '#f59e0b',
             happy: '#facc15',
             neutral: '#9ca3af'
         };
+        
+        const emoIcons = {
+            angry: 'fa-angry',
+            fear: 'fa-scared',
+            disgust: 'fa-grimace',
+            sad: 'fa-sad-tear',
+            surprise: 'fa-surprise',
+            happy: 'fa-smile-beam',
+            neutral: 'fa-meh'
+        };
+        
         function pct(n){ return typeof n === 'number' ? n.toFixed(1) : '0.0'; }
         let rtTimer = null;
 
@@ -309,7 +970,6 @@
             cards.innerHTML = '';
             count.textContent = `${images.length} kayıt`;
 
-            // Yeni -> Eski sıralama (dosya adında timestamp var)
             images.sort((a,b)=> a < b ? 1 : -1);
 
             for (let i=0;i<images.length;i++){
@@ -328,62 +988,80 @@
                 card.appendChild(img);
 
                 const body = document.createElement('div');
-                body.className = 'body';
+                body.className = 'card-body';
 
                 const title = document.createElement('div');
-                title.className = 'title';
+                title.className = 'card-title';
 
-                let main = 'Bilinmiyor';
+                let main = 'neutral';
                 let dangerScore = 0;
                 let emotions = null;
                 let timestamp = '';
                 let pid = '';
+                let age = null;
+                let ageCategory = null;
+                
                 if (data && data.emotions){
                     emotions = data.emotions;
                     timestamp = data.timestamp || '';
                     pid = data.id || '';
+                    age = data.age || null;
+                    ageCategory = data.age_category || null;
                     main = Object.keys(emotions).reduce((a,b)=> emotions[a] > emotions[b] ? a : b);
                     dangerScore = (emotions.angry||0) + (emotions.fear||0) + (emotions.disgust||0);
                 } else {
-                    // JSON yoksa, dosya adındaki parçalardan id ve zamanı tahmin et (id_timestamp)
                     const parts = base.split('_');
                     pid = parts[0] || '';
                     timestamp = parts[1] || '';
                 }
 
                 const badgeColor = emoColors[main] || '#00e5ff';
-                const badge = `<span class="badge" style="border-color:${badgeColor}; color:${badgeColor}; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 0 14px ${badgeColor}33;">${trEmo[main] || main}</span>`;
-                title.innerHTML = `Kişi ID: ${pid || '-'} ${badge}`;
+                const badge = `<span class="emotion-badge" style="background:linear-gradient(135deg, ${badgeColor}33, ${badgeColor}22); border-color:${badgeColor}; color:${badgeColor};">${trEmo[main] || main}</span>`;
+                title.innerHTML = `<span style="color:var(--text-muted); font-size:13px;">ID: ${pid || '-'}</span> ${badge}`;
 
                 const meta = document.createElement('div');
-                meta.className = 'meta';
-                meta.textContent = `Zaman: ${timestamp} ${emotions ? `• Tehlike Skoru: ${pct(dangerScore)}%` : ''}`;
+                meta.className = 'card-meta';
+                let metaHtml = `<i class="fas fa-clock"></i> ${timestamp}`;
+                if (emotions) {
+                    metaHtml += ` • <i class="fas fa-shield-alt"></i> Tehlike: ${pct(dangerScore)}%`;
+                }
+                if (age && ageCategory) {
+                    metaHtml += ` • <i class="fas fa-user"></i> Yaş: ${age} (${ageCategory})`;
+                }
+                meta.innerHTML = metaHtml;
 
                 const emotionsEl = document.createElement('div');
-                emotionsEl.className = 'emotions grid';
+                emotionsEl.className = 'card-emotions';
 
                 if (emotions){
                     const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
                     order.forEach(k => {
                         if (typeof emotions[k] === 'undefined') return;
+                        
                         const row = document.createElement('div');
                         row.className = 'emo-row';
+                        
                         const label = document.createElement('span');
-                        label.className = 'label';
+                        label.className = 'emo-label';
                         label.textContent = trEmo[k] || k;
+                        
                         const bar = document.createElement('div');
-                        bar.className = 'bar';
-                        const fill = document.createElement('span');
+                        bar.className = 'emo-bar';
+                        const fill = document.createElement('div');
+                        fill.className = 'emo-fill';
                         const color = emoColors[k] || '#66e0ff';
-                        fill.style.background = color;
-                        fill.style.boxShadow = `0 0 12px ${color}66`;
-                        // Başta 0, sonra hedefe animasyon
+                        fill.style.background = `linear-gradient(90deg, ${color}, ${color}dd)`;
                         fill.style.width = '0%';
+                        
                         const target = Math.min(100, Math.max(0, emotions[k]));
-                        requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ fill.style.width = target + '%'; }); });
+                        setTimeout(() => { fill.style.width = target + '%'; }, 100 + i * 50);
+                        
                         bar.appendChild(fill);
+                        
                         const value = document.createElement('span');
+                        value.className = 'emo-value';
                         value.textContent = pct(emotions[k]) + '%';
+                        
                         row.appendChild(label);
                         row.appendChild(bar);
                         row.appendChild(value);
@@ -421,7 +1099,16 @@
             const res = await fetch('/status');
             const data = await res.json();
             const st = document.getElementById('status');
-            st.textContent = `Algılama: ${data.enabled ? 'Açık' : 'Kapalı'}`;
+            const badge = document.getElementById('statusBadge');
+            
+            if (data.enabled) {
+                st.textContent = 'Algılama Aktif';
+                badge.classList.remove('inactive');
+            } else {
+                st.textContent = 'Algılama Kapalı';
+                badge.classList.add('inactive');
+            }
+            
             if (data.enabled){
                 startRealtime();
             } else {
@@ -443,30 +1130,34 @@
             const main = data.main_emotion || '-';
             const dsc = data.danger_score || 0;
 
-            // Yüz algılanmadıysa duygu bilgisi gösterme
             const faceDetected = em && Object.keys(em).length > 0 && Object.values(em).some(v => v > 0);
             
             if (!faceDetected) {
-                rtMain.textContent = '-';
-                rtMeta.textContent = `Durum: ${enabled ? 'Açık' : 'Kapalı'} • Yüz algılanmadı`;
-                // Yüz algılanmasa bile boş tablo göster
+                rtMain.textContent = 'Yüz Algılanmadı';
+                rtMeta.innerHTML = `<i class="fas fa-info-circle"></i> ${enabled ? 'Sistem aktif, yüz bekleniyor...' : 'Sistem kapalı'}`;
+                
                 const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
                 order.forEach(k => {
                     const row = document.createElement('div');
                     row.className = 'emo-row';
+                    
                     const label = document.createElement('span');
-                    label.className = 'label';
+                    label.className = 'emo-label';
                     label.textContent = trEmo[k] || k;
+                    
                     const bar = document.createElement('div');
-                    bar.className = 'bar';
-                    const fill = document.createElement('span');
+                    bar.className = 'emo-bar';
+                    const fill = document.createElement('div');
+                    fill.className = 'emo-fill';
                     const color = emoColors[k] || '#66e0ff';
-                    fill.style.background = color;
-                    fill.style.boxShadow = `0 0 12px ${color}66`;
+                    fill.style.background = `linear-gradient(90deg, ${color}, ${color}dd)`;
                     fill.style.width = '0%';
                     bar.appendChild(fill);
+                    
                     const value = document.createElement('span');
+                    value.className = 'emo-value';
                     value.textContent = '0.0%';
+                    
                     row.appendChild(label);
                     row.appendChild(bar);
                     row.appendChild(value);
@@ -476,29 +1167,45 @@
             }
 
             rtMain.textContent = trEmo[main] || main;
-            rtMeta.textContent = `Durum: ${enabled ? 'Açık' : 'Kapalı'} • Zaman: ${ts} • Tehlike Skoru: ${pct(dsc)}%`;
+            
+            // Add age information to meta if available
+            const age = data.age;
+            const ageCategory = data.age_category;
+            let metaText = `<i class="fas fa-clock"></i> ${ts} • <i class="fas fa-exclamation-triangle"></i> Tehlike: ${pct(dsc)}%`;
+            if (age && ageCategory) {
+                metaText += ` • <i class="fas fa-user"></i> Yaş: ${age} (${ageCategory})`;
+            }
+            rtMeta.innerHTML = metaText;
 
             if (em){
                 const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
                 order.forEach(k => {
                     if (typeof em[k] === 'undefined') return;
+                    
                     const row = document.createElement('div');
                     row.className = 'emo-row';
+                    
                     const label = document.createElement('span');
-                    label.className = 'label';
+                    label.className = 'emo-label';
                     label.textContent = trEmo[k] || k;
+                    
                     const bar = document.createElement('div');
-                    bar.className = 'bar';
-                    const fill = document.createElement('span');
+                    bar.className = 'emo-bar';
+                    const fill = document.createElement('div');
+                    fill.className = 'emo-fill';
                     const color = emoColors[k] || '#66e0ff';
-                    fill.style.background = color;
-                    fill.style.boxShadow = `0 0 12px ${color}66`;
+                    fill.style.background = `linear-gradient(90deg, ${color}, ${color}dd)`;
                     fill.style.width = '0%';
+                    
                     const target = Math.min(100, Math.max(0, em[k]));
-                    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ fill.style.width = target + '%'; }); });
+                    setTimeout(() => { fill.style.width = target + '%'; }, 50);
+                    
                     bar.appendChild(fill);
+                    
                     const value = document.createElement('span');
+                    value.className = 'emo-value';
                     value.textContent = pct(em[k]) + '%';
+                    
                     row.appendChild(label);
                     row.appendChild(bar);
                     row.appendChild(value);
@@ -513,29 +1220,37 @@
         
         let currentESPip = null;
         
-        // Connect / Disconnect to remote ESP32 camera by IP
         function connectStream(){
             const ip = document.getElementById('ipInput').value.trim();
-            if (!ip) return alert('Lütfen bir IP girin');
+            if (!ip) {
+                alert('⚠️ Lütfen geçerli bir IP adresi girin');
+                return;
+            }
+            
             const img = document.getElementById('liveImg');
             img.src = `/video_feed?ip=${encodeURIComponent(ip)}`;
-            document.getElementById('status').textContent = `Bağlanıyor: ${ip}`;
             
-            // Show ESP controls
+            const badge = document.getElementById('statusBadge');
+            const status = document.getElementById('status');
+            status.textContent = `${ip} bağlanıyor...`;
+            badge.classList.remove('inactive');
+            
             currentESPip = ip;
             document.getElementById('espControls').style.display = 'block';
             
-            // Load current settings
-            setTimeout(() => refreshESPStatus(), 1000);
+            setTimeout(() => {
+                refreshESPStatus();
+                status.textContent = `ESP32 Bağlı (${ip})`;
+            }, 1500);
         }
         
         function disconnectStream(){
-            // revert to local/default camera (server-side)
             const img = document.getElementById('liveImg');
             img.src = `{{ url_for('video_feed') }}`;
-            document.getElementById('status').textContent = `Yerel kameraya geçildi`;
             
-            // Hide ESP controls
+            const status = document.getElementById('status');
+            status.textContent = 'Yerel Kamera';
+            
             currentESPip = null;
             document.getElementById('espControls').style.display = 'none';
         }
@@ -543,10 +1258,9 @@
         document.getElementById('btnConnect').onclick = connectStream;
         document.getElementById('btnDisconnect').onclick = disconnectStream;
         
-        // ESP Camera Parameter Control
         async function setESPParam(param, value) {
             if (!currentESPip) {
-                alert('Lütfen önce ESP kamerasına bağlanın');
+                showNotification('⚠️ Lütfen önce ESP kamerasına bağlanın', 'warning');
                 return;
             }
             
@@ -565,24 +1279,24 @@
                     console.log('✓ ESP ayar uygulandı:', param, '=', value);
                 } else {
                     console.warn('⚠ ESP ayar hatası:', result);
-                    alert(`Ayar hatası: ${param}`);
+                    showNotification(`Ayar hatası: ${param}`, 'error');
                 }
             } catch (e) {
                 console.error('❌ ESP komut gönderme hatası:', e);
-                alert('ESP ile iletişim hatası');
+                showNotification('ESP ile iletişim hatası', 'error');
             }
         }
         
-        // Apply Optimal Preset for Emotion Analysis
         async function applyOptimalPreset() {
             if (!currentESPip) {
-                alert('Lütfen önce ESP kamerasına bağlanın');
+                showNotification('⚠️ Lütfen önce ESP kamerasına bağlanın', 'warning');
                 return;
             }
             
             const btn = event.target;
+            const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.textContent = '⏳ Ayarlar uygulanıyor...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uygulanıyor...';
             
             try {
                 const res = await fetch('/esp_apply_preset', {
@@ -593,24 +1307,51 @@
                 
                 const result = await res.json();
                 if (result.status === 'success') {
-                    alert('✅ Optimal ayarlar başarıyla uygulandı!\n\n' +
-                          '• Çözünürlük: XGA (1024x768)\n' +
-                          '• JPEG Kalitesi: En Yüksek\n' +
-                          '• Otomatik Ayarlar: Aktif\n' +
-                          '• Yüz Algılama: Aktif');
-                    
-                    // Update UI controls to reflect new settings
+                    showNotification('✅ Optimal ayarlar başarıyla uygulandı!', 'success');
                     setTimeout(() => refreshESPStatus(), 500);
                 } else {
-                    alert('⚠ Bazı ayarlar uygulanamadı. Lütfen manuel kontrol edin.');
+                    showNotification('⚠ Bazı ayarlar uygulanamadı', 'warning');
                 }
             } catch (e) {
                 console.error('❌ Preset uygulama hatası:', e);
-                alert('Ayarlar uygulanırken hata oluştu');
+                showNotification('Ayarlar uygulanırken hata oluştu', 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '✨ Duygu Analizi İçin Optimize Et';
+                btn.innerHTML = originalText;
             }
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Simple notification system
+            const colors = {
+                success: '#10b981',
+                error: '#ef4444',
+                warning: '#f59e0b',
+                info: '#3b82f6'
+            };
+            
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 16px 24px;
+                background: var(--surface);
+                border: 1px solid ${colors[type]};
+                border-radius: 12px;
+                color: var(--text-primary);
+                box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
         }
         
         // Refresh and display current ESP status

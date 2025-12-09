@@ -8,7 +8,7 @@ from modules.config import CAPTURE_DIR
 from modules.face_analysis import get_face_embedding, register_dangerous_person
 
 
-def save_dangerous_person(person_id, timestamp, frame, emotions):
+def save_dangerous_person(person_id, timestamp, frame, emotions, age=None, age_category=None):
     """Saves the image and information of a dangerous person."""
     # Save image
     img_path = os.path.join(CAPTURE_DIR, f"{person_id}_{timestamp}.jpg")
@@ -20,6 +20,13 @@ def save_dangerous_person(person_id, timestamp, frame, emotions):
         "timestamp": timestamp,
         "emotions": emotions
     }
+    
+    # Add age information if available
+    if age is not None:
+        data["age"] = age
+    if age_category is not None:
+        data["age_category"] = age_category
+    
     json_path = os.path.join(CAPTURE_DIR, f"{person_id}_{timestamp}.json")
     with open(json_path, "w") as f:
         json.dump(data, f, indent=4)

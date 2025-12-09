@@ -6,7 +6,7 @@ from deepface import DeepFace
 from collections import deque
 import requests
 import json
-from modules.config import HISTORY_SIZE, FACE_SIMILARITY_THRESHOLD
+from modules.config import HISTORY_SIZE, FACE_SIMILARITY_THRESHOLD, AGE_DETECTION_ENABLED
 
 # ESP32 target URL for emotion data (can be set by user)
 ESP32_TARGET_URL = None
@@ -16,6 +16,9 @@ emotion_history = deque(maxlen=HISTORY_SIZE)
 
 # Face embeddings of registered dangerous persons
 registered_dangerous_faces = {}
+
+# Age estimator instance (lazy initialization)
+_age_estimator = None
 
 
 # -----------------------
@@ -267,6 +270,53 @@ def register_dangerous_person(person_id, embedding):
 def clear_emotion_history():
     """Clears emotion history."""
     emotion_history.clear()
+
+
+def analyze_age(rgb_frame):
+    """
+    Analyze age from RGB frame using the age detection module.
+    
+    Args:
+        rgb_frame: RGB numpy array of face image
+        
+    Returns:
+        tuple: (age, age_category) or (None, None) if detection fails
+    """
+    if not AGE_DETECTION_ENABLED:
+        return None, None
+    
+    global _age_estimator
+    
+    try:
+        # Lazy import to avoid circular dependencies
+        from modules.age_detection import estimate_age, get_age_category, AgeEstimator
+        
+        # Initialize age estimator if needed
+        if _age_estimator is None:
+            from modules.config import AGE_SMOOTHING_WINDOW
+            _age_estimator = AgeEstimator(history_size=AGE_SMOOTHING_WINDOW)
+        
+        # Estimate age
+        age = estimate_age(rgb_frame)
+        
+        if age is not None:
+            # Apply temporal smoothing
+            smoothed_age = _age_estimator.update(age)
+            age_category = get_age_category(smoothed_age)
+            return smoothed_age, age_category
+        else:
+            return None, None
+            
+    except Exception as e:
+        print(f"Age analysis error: {e}")
+        return None, None
+
+
+def reset_age_estimator():
+    """Reset age estimator history."""
+    global _age_estimator
+    if _age_estimator is not None:
+        _age_estimator.reset()
 
 
 def set_esp32_target_url(url):
