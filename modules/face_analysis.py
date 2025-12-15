@@ -7,6 +7,35 @@ from collections import deque
 import requests
 import json
 from modules.config import HISTORY_SIZE, FACE_SIMILARITY_THRESHOLD
+import joblib
+import pandas as pd
+
+
+# Global olarak modeli yükle
+try:
+    thief_model = joblib.load("thief_detector_model.pkl")
+    print("✅ Hırsız Tespit Modeli Yüklendi.")
+except:
+    thief_model = None
+    print("⚠️ Model dosyası bulunamadı, manuel hesaplama kullanılacak.")
+
+def predict_thief_risk(emotions_dict):
+    """
+    Modeli kullanarak kişinin hırsız/tehlikeli olup olmadığını tahmin eder.
+    Dönüş: (is_thief: bool, probability: float)
+    """
+    if thief_model is None:
+        return False, 0.0
+        
+    # Pandas DataFrame formatına çevir (model eğitimiyle aynı sütun sırası olmalı)
+    features = pd.DataFrame([emotions_dict], columns=["happy", "sad", "angry", "surprise", "fear", "disgust", "neutral"])
+    
+    # Olasılık tahmini (0. sınıf: Güvenli, 1. sınıf: Hırsız)
+    probs = thief_model.predict_proba(features)[0]
+    thief_prob = probs[1] # 1 olma olasılığı
+    
+    is_thief = thief_prob > 0.65 # %65'ten fazla emindeyse hırsız de
+    return is_thief, thief_prob
 
 # ESP32 target URL for emotion data (can be set by user)
 ESP32_TARGET_URL = None
