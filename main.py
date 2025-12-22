@@ -8,14 +8,13 @@ from flask import Flask, render_template, Response, jsonify, request
 import cv2
 from modules.config import latest_state
 from modules.camera import camera_stream
-from modules.storage import load_existing_faces, get_captured_images
+from modules.storage import get_captured_images
 from modules import esp_client
 from modules import face_analysis
 
 app = Flask(__name__)
 
-# Load registered persons on application startup
-load_existing_faces()
+# Not: Tehlikeli kişi (embedding) kaydı kullanılmıyor.
 
 # ESP32 OLED target URL - will be set by user
 ESP32_OLED_URL = None
@@ -44,13 +43,28 @@ def video_feed():
         import time
         import numpy as np
         import mediapipe as mp
-        from modules.config import ANALYSIS_INTERVAL, DANGER_THRESHOLD, emotion_labels, latest_state
+        from modules.config import (
+            ANALYSIS_INTERVAL,
+            DANGER_THRESHOLD,
+            emotion_labels,
+            latest_state,
+            DANGER_COMPONENT_MIN_PERCENT,
+            DANGER_COMPONENT_COUNT_MIN,
+            DANGER_COMPONENT_MAX_MIN_PERCENT,
+            DANGER_PERSISTENCE_SECONDS,
+            DANGER_COOLDOWN_SECONDS,
+            THIEF_PROB_THRESHOLD,
+            ANGRY_ONLY_RISK_MIN_PERCENT,
+            MODEL_RISK_GATING_ENABLED,
+            MODEL_RISK_GATING_KEYS,
+            MODEL_RISK_GATING_MIN_PERCENT,
+        )
         from modules.face_analysis import (
             analyze_emotions, get_average_emotions, calculate_danger_score,
             get_face_embedding, is_registered_dangerous_person, register_dangerous_person,
-            TemporalSmoother, emotions_dict_to_vector, vector_to_emotions_dict
+            TemporalSmoother, emotions_dict_to_vector, vector_to_emotions_dict,
+            predict_thief_risk
         )
-        from modules.storage import save_dangerous_person
         import uuid
         
         # MediaPipe Face Mesh (local instance for this generator)
@@ -61,11 +75,13 @@ def video_feed():
         # Temporal smoother - iyileştirilmiş parametrelerle
         emotion_smoother = TemporalSmoother(maxlen=10, ema_alpha=0.7)
         last_danger_check = 0
+        danger_candidate_since = None
+        danger_active_until = 0.0
         
         url = f'http://{ip}:81/stream'
 
         def gen_from_ip_with_analysis():
-            nonlocal last_danger_check
+            nonlocal last_danger_check, danger_candidate_since, danger_active_until
             cap = cv2.VideoCapture(url)
             frame_count = 0
             
@@ -107,13 +123,58 @@ def video_feed():
                     
                     # Calculate danger score
                     danger_score = calculate_danger_score(avg_emotions)
-                    danger = camera_stream.is_detection_enabled() and (danger_score > DANGER_THRESHOLD)
+                    
+                    # Predict Thief Risk
+                    is_thief, thief_prob = False, 0.0
+                    if avg_emotions:
+                        is_thief, thief_prob = predict_thief_risk(avg_emotions)
+
+                    # Daha gerçekçi risk kararı: çoklu koşul + süreklilik + cooldown
+                    angry = float(avg_emotions.get("angry", 0.0))
+                    fear = float(avg_emotions.get("fear", 0.0))
+                    disgust = float(avg_emotions.get("disgust", 0.0))
+                    components = [angry, fear, disgust]
+                    high_components = sum(1 for v in components if v >= float(DANGER_COMPONENT_MIN_PERCENT))
+                    max_component = max(components) if components else 0.0
+
+                    # 1) Duygu-tabanlı risk: önceki çoklu koşul + 'kızgın' çok yüksekse tek başına
+                    angry_only_risk = angry >= float(ANGRY_ONLY_RISK_MIN_PERCENT)
+                    emotion_risk = angry_only_risk or (
+                        float(danger_score) >= float(DANGER_THRESHOLD)
+                        and high_components >= int(DANGER_COMPONENT_COUNT_MIN)
+                        and max_component >= float(DANGER_COMPONENT_MAX_MIN_PERCENT)
+                    )
+
+                    # 2) Model-tabanlı risk: thief_prob yüksekse ama sadece üzgün/korkmuş gibi durumlarda
+                    # 'RISK' overlay'ini tetiklemesini engellemek için agresif duygu kapısı uygula.
+                    model_risk_raw = float(thief_prob) >= float(THIEF_PROB_THRESHOLD)
+                    if bool(MODEL_RISK_GATING_ENABLED):
+                        aggressive_max = max(float(avg_emotions.get(k, 0.0)) for k in MODEL_RISK_GATING_KEYS)
+                        model_risk = model_risk_raw and aggressive_max >= float(MODEL_RISK_GATING_MIN_PERCENT)
+                    else:
+                        model_risk = model_risk_raw
+
+                    risk_condition = camera_stream.is_detection_enabled() and (emotion_risk or model_risk)
+
+                    now = time.time()
+                    if risk_condition:
+                        if danger_candidate_since is None:
+                            danger_candidate_since = now
+                        if (now - danger_candidate_since) >= float(DANGER_PERSISTENCE_SECONDS):
+                            danger_active_until = max(danger_active_until, now + float(DANGER_COOLDOWN_SECONDS))
+                    else:
+                        danger_candidate_since = None
+
+                    danger = camera_stream.is_detection_enabled() and (now < danger_active_until)
                     
                     # Update latest state
                     latest_state["timestamp"] = time.strftime("%Y%m%d-%H%M%S")
                     latest_state["emotions"] = avg_emotions if avg_emotions else None
                     latest_state["main_emotion"] = main_emotion
                     latest_state["danger_score"] = float(danger_score)
+                    latest_state["is_thief"] = is_thief
+                    latest_state["thief_prob"] = thief_prob
+                    latest_state["danger_active"] = bool(danger)
                     
                     # Send emotion to ESP32 OLED if URL is configured
                     if main_emotion and avg_emotions and face_analysis.ESP32_TARGET_URL:
@@ -125,6 +186,10 @@ def video_feed():
                     if avg_emotions and main_emotion:
                         emotion_text = f"Baskin Duygu: {emotion_labels.get(main_emotion, main_emotion)} ({avg_emotions.get(main_emotion, 0):.1f}%)"
                         cv2.putText(frame, emotion_text, (10, y0), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                        
+                        if is_thief:
+                            cv2.putText(frame, f"THIEF DETECTED! ({thief_prob:.1%})", (10, y0 + 30), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
                     
                     # Draw detection status
                     if not camera_stream.is_detection_enabled():
@@ -134,28 +199,18 @@ def video_feed():
                     # Handle danger detection
                     if danger:
                         current_time = time.time()
-                        if current_time - last_danger_check > 5:
+                        if current_time - last_danger_check > 2:
                             face_embedding = get_face_embedding(rgb)
                             is_registered, existing_id = is_registered_dangerous_person(face_embedding)
                             
-                            if not is_registered and face_embedding is not None:
-                                person_id = str(uuid.uuid4())[:8]
-                                timestamp = time.strftime("%Y%m%d-%H%M%S")
-                                save_dangerous_person(person_id, timestamp, frame, avg_emotions)
-                                register_dangerous_person(person_id, face_embedding)
-                                cv2.putText(frame, f"DANGEROUS PERSON! (NEW: {person_id})", (10, y0 + 60), 
-                                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
-                            elif is_registered:
-                                print(f"✓ Registered dangerous person detected: {existing_id}")
-                                cv2.putText(frame, f"REGISTERED DANGEROUS PERSON: {existing_id}", (10, y0 + 60), 
+                            # Tehlikeli kişi kaydı DEVRE DIŞI: sadece UI tarafı /save_event ile model sonucuna göre kayıt alır.
+                            if is_registered:
+                                cv2.putText(frame, f"RISK DETECTED (KNOWN: {existing_id})", (10, y0 + 60),
                                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 140, 255), 3)
                             else:
-                                cv2.putText(frame, "DANGEROUS - Face not recognized", (10, y0 + 60), 
+                                cv2.putText(frame, "RISK TESPIT EDILDI", (10, y0 + 60),
                                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
                             last_danger_check = current_time
-                        else:
-                            cv2.putText(frame, "DANGEROUS PERSON!", (10, y0 + 60), 
-                                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
                     
                     # Encode and yield frame
                     ret2, buffer = cv2.imencode('.jpg', frame)
@@ -180,6 +235,38 @@ def get_captured():
     """Lists captured dangerous person files."""
     images = get_captured_images()
     return jsonify(images)
+
+
+@app.route('/save_event', methods=['POST'])
+def save_event():
+    """Save a model-driven snapshot + metadata from the frontend.
+
+    JSON body:
+      {
+        "image": "data:image/jpeg;base64,..." | "<base64>",
+        "timestamp": "YYYYmmdd-HHMMSS" (optional),
+        "analysis": { ... } (optional)
+      }
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        image_b64 = payload.get('image')
+        timestamp = (payload.get('timestamp') or '').strip()
+        analysis = payload.get('analysis') or {}
+
+        if not timestamp:
+            import time
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+
+        from modules.storage import decode_base64_image, save_model_event
+        frame = decode_base64_image(image_b64)
+        if frame is None:
+            return jsonify({"error": "Invalid image payload"}), 400
+
+        img_path, json_path = save_model_event(timestamp, frame, analysis=analysis)
+        return jsonify({"status": "ok", "image": img_path, "json": json_path}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/set_camera_source', methods=['POST'])
@@ -300,6 +387,8 @@ def current_emotions():
         "emotions": latest_state.get("emotions"),
         "main_emotion": latest_state.get("main_emotion"),
         "danger_score": latest_state.get("danger_score"),
+        "is_thief": bool(latest_state.get("is_thief", False)),
+        "thief_prob": float(latest_state.get("thief_prob", 0.0)),
     }
     return jsonify(data)
 

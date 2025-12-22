@@ -10,11 +10,35 @@ os.makedirs(CAPTURE_DIR, exist_ok=True)
 # Analysis parameters
 ANALYSIS_INTERVAL = 3     # analyze every 3 frames (daha sık analiz için optimize edildi)
 HISTORY_SIZE = 5           # average of last 5 analyses (daha fazla smoothing)
-DANGER_THRESHOLD = 70     # danger threshold (angry+fear+disgust sum)
+DANGER_THRESHOLD = 85.0     # danger threshold (angry+fear+disgust sum) - yanlış pozitifleri azaltmak için yükseltildi
 FACE_SIMILARITY_THRESHOLD = 0.6  # face similarity threshold (0-1 range, lower=stricter)
 
 # Emotion analysis optimization
-EMOTION_CONFIDENCE_THRESHOLD = 35.0  # minimum emotion confidence to consider valid (%)
+EMOTION_CONFIDENCE_THRESHOLD = 50.0  # minimum emotion confidence to consider valid (%)
+
+# Dominant emotion gating
+EMOTION_DOMINANT_MIN_PERCENT = 40.0  # dominant emotion bu değerin altındaysa 'neutral' say (belirsizlik)
+
+# Thief model threshold
+THIEF_PROB_THRESHOLD = 0.75  # modelin 'hırsız' demesi için minimum olasılık (biraz daha hassas)
+
+# Danger boolean için ek koşullar
+DANGER_COMPONENT_MIN_PERCENT = 35.0  # angry/fear/disgust içinden sayılacak minimum oran
+DANGER_COMPONENT_COUNT_MIN = 2       # en az kaç komponent yüksek olmalı
+DANGER_COMPONENT_MAX_MIN_PERCENT = 45.0  # en yüksek komponent minimumu (tek başına zayıf yükselmeleri ele)
+
+# Tek başına 'kızgın' yüksekse risk say (korkmuş/üzgün baskınlığına karşı denge)
+ANGRY_ONLY_RISK_MIN_PERCENT = 75.0
+
+# Model (thief_prob) bazlı risk tetiklemesini, agresif duygularla kapıla.
+# Böylece sadece 'üzgün/korkmuş' ağırlıklı çıktılarda 'RISK' overlay'i daha az tetiklenir.
+MODEL_RISK_GATING_ENABLED = True
+MODEL_RISK_GATING_KEYS = ("angry", "disgust")
+MODEL_RISK_GATING_MIN_PERCENT = 25.0
+
+# Temporal gating (etiket titremesini azaltır)
+DANGER_PERSISTENCE_SECONDS = 1.5  # koşul en az bu süre devam ederse 'risk' say
+DANGER_COOLDOWN_SECONDS = 3.0     # risk tetiklendikten sonra en az bu süre 'aktif' tut
 
 # Detection status
 DETECTION_ENABLED = True

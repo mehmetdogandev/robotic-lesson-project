@@ -10,9 +10,18 @@ import mediapipe as mp
 from modules.config import (
     ANALYSIS_INTERVAL, DANGER_THRESHOLD, emotion_labels, latest_state
 )
+from modules.config import (
+    DANGER_COMPONENT_MIN_PERCENT,
+    DANGER_COMPONENT_COUNT_MIN,
+    DANGER_COMPONENT_MAX_MIN_PERCENT,
+    DANGER_PERSISTENCE_SECONDS,
+    DANGER_COOLDOWN_SECONDS,
+    THIEF_PROB_THRESHOLD,
+)
 from modules.face_analysis import (
     analyze_emotions, get_average_emotions, calculate_danger_score,
-    get_face_embedding, is_registered_dangerous_person, register_dangerous_person
+    get_face_embedding, is_registered_dangerous_person, register_dangerous_person,
+    predict_thief_risk
 )
 from modules.face_analysis import TemporalSmoother, emotions_dict_to_vector, vector_to_emotions_dict, preprocess_face
 from modules.storage import save_dangerous_person
@@ -35,6 +44,10 @@ class CameraStream:
         self._remote_delay = 0.1
         # temporal smoother - iyileştirilmiş parametrelerle
         self.emotion_smoother = TemporalSmoother(maxlen=10, ema_alpha=0.7)
+
+        # Risk gating (false-positive azaltma)
+        self._danger_candidate_since = None
+        self._danger_active_until = 0.0
     
     def set_detection(self, enabled):
         """Sets detection status."""
@@ -81,40 +94,17 @@ class CameraStream:
             cv2.putText(frame, "ALGILAMA KAPALI", (10, y0 + 60), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (128, 128, 128), 3)
     
-    def handle_danger_detection(self, frame, rgb, avg_emotions, y0=30):
+    def handle_danger_detection(self, frame, rgb, avg_emotions, analysis_meta=None, y0=30):
         """Handles dangerous situation detection."""
         current_time = time.time()
+        analysis_meta = analysis_meta or {}
         
-        # Check every 5 seconds
-        if current_time - self.last_danger_check > 5:
-            face_embedding = get_face_embedding(rgb)
-            is_registered, existing_id = is_registered_dangerous_person(face_embedding)
-            
-            if not is_registered and face_embedding is not None:
-                # New dangerous person - save
-                person_id = str(uuid.uuid4())[:8]
-                timestamp = time.strftime("%Y%m%d-%H%M%S")
-                
-                save_dangerous_person(person_id, timestamp, frame, avg_emotions)
-                register_dangerous_person(person_id, face_embedding)
-                
-                cv2.putText(frame, f"DANGEROUS PERSON! (NEW: {person_id})", (10, y0 + 60), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
-            
-            elif is_registered:
-                # Registered dangerous person
-                print(f"✓ Registered dangerous person detected: {existing_id}")
-                cv2.putText(frame, f"REGISTERED DANGEROUS PERSON: {existing_id}", (10, y0 + 60), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 140, 255), 3)
-            else:
-                # Face not recognized
-                cv2.putText(frame, "DANGEROUS - Face not recognized", (10, y0 + 60), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
-            
+        # Tehlikeli kişi kaydı DEVRE DIŞI: sadece UI tarafı /save_event ile model sonucuna göre kayıt alır.
+        # Bu fonksiyon artık sadece overlay basar (spam engeli için aralıklı).
+        if current_time - self.last_danger_check > 2:
+            cv2.putText(frame, "RISK TESPIT EDILDI", (10, y0 + 60),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
             self.last_danger_check = current_time
-        else:
-            cv2.putText(frame, "DANGEROUS PERSON!", (10, y0 + 60), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
     
     def generate_frames(self):
         """Generates frames for video stream.
@@ -174,13 +164,46 @@ class CameraStream:
             
             # Calculate danger score
             danger_score = calculate_danger_score(avg_emotions)
-            danger = self.detection_enabled and (danger_score > DANGER_THRESHOLD)
+            
+            # Predict Thief Risk
+            is_thief, thief_prob = False, 0.0
+            if avg_emotions:
+                is_thief, thief_prob = predict_thief_risk(avg_emotions)
+
+            # Daha gerçekçi risk kararı: çoklu koşul + süreklilik + cooldown
+            angry = float(avg_emotions.get("angry", 0.0))
+            fear = float(avg_emotions.get("fear", 0.0))
+            disgust = float(avg_emotions.get("disgust", 0.0))
+            components = [angry, fear, disgust]
+            high_components = sum(1 for v in components if v >= float(DANGER_COMPONENT_MIN_PERCENT))
+            max_component = max(components) if components else 0.0
+            emotion_risk = (
+                float(danger_score) >= float(DANGER_THRESHOLD)
+                and high_components >= int(DANGER_COMPONENT_COUNT_MIN)
+                and max_component >= float(DANGER_COMPONENT_MAX_MIN_PERCENT)
+            )
+            model_risk = float(thief_prob) >= float(THIEF_PROB_THRESHOLD)
+            risk_condition = self.detection_enabled and (emotion_risk or model_risk)
+
+            now = time.time()
+            if risk_condition:
+                if self._danger_candidate_since is None:
+                    self._danger_candidate_since = now
+                if (now - self._danger_candidate_since) >= float(DANGER_PERSISTENCE_SECONDS):
+                    self._danger_active_until = max(self._danger_active_until, now + float(DANGER_COOLDOWN_SECONDS))
+            else:
+                self._danger_candidate_since = None
+
+            danger = self.detection_enabled and (now < self._danger_active_until)
             
             # Update latest state
             latest_state["timestamp"] = time.strftime("%Y%m%d-%H%M%S")
             latest_state["emotions"] = avg_emotions if avg_emotions else None
             latest_state["main_emotion"] = main_emotion
             latest_state["danger_score"] = float(danger_score)
+            latest_state["is_thief"] = is_thief
+            latest_state["thief_prob"] = thief_prob
+            latest_state["danger_active"] = bool(danger)
             
             # Send emotion to ESP32 OLED if URL is configured
             from modules.face_analysis import send_emotion_to_esp32, ESP32_TARGET_URL
@@ -191,11 +214,24 @@ class CameraStream:
             # Draw information on frame
             y0 = 30
             self.draw_emotion_info(frame, main_emotion, avg_emotions, y0)
+            
+            if is_thief:
+                cv2.putText(frame, f"THIEF DETECTED! ({thief_prob:.1%})", (10, y0 + 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+
             self.draw_detection_status(frame, y0)
             
             # Check for dangerous situation
             if danger:
-                self.handle_danger_detection(frame, rgb, avg_emotions, y0)
+                analysis_meta = {
+                    "main_emotion": main_emotion,
+                    "danger_score": float(danger_score),
+                    "is_thief": bool(is_thief),
+                    "thief_prob": float(thief_prob),
+                    "source": "esp" if self.remote_ip else "local",
+                    "ip": self.remote_ip,
+                }
+                self.handle_danger_detection(frame, rgb, avg_emotions, analysis_meta, y0)
             
             # Encode frame and yield
             ret, buffer = cv2.imencode('.jpg', frame)
