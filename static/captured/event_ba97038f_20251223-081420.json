@@ -1,0 +1,21 @@
+{
+    "type": "model_event",
+    "id": "ba97038f",
+    "timestamp": "20251223-081420",
+    "emotions": {
+        "angry": 3.6020051687955856,
+        "disgust": 1.2485225298064506e-06,
+        "fear": 54.65992093086243,
+        "happy": 16.535986959934235,
+        "neutral": 12.710151076316833,
+        "sad": 9.231260418891907,
+        "surprise": 3.2606810331344604
+    },
+    "main_emotion": "fear",
+    "danger_score": 58.26192734818054,
+    "is_thief": true,
+    "thief_prob": 0.8,
+    "source": "ui",
+    "ip": null,
+    "notes": "auto:is_thief"
+}

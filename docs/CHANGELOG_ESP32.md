@@ -83,7 +83,7 @@ Duygu analizi için en iyi sonuçlar:
 ### 1️⃣ ESP32 Bağlantısı
 ```javascript
 // Frontend'de
-1. IP gir: "10.64.220.189"
+1. IP gir: "10.158.242.195"
 2. "Bağlan" butonuna tıkla
 3. ESP kontrol paneli otomatik açılır
 ```
@@ -93,7 +93,7 @@ Duygu analizi için en iyi sonuçlar:
 // Tek tıkla
 await fetch('/esp_apply_preset', {
     method: 'POST',
-    body: JSON.stringify({ ip: '10.64.220.189' })
+    body: JSON.stringify({ ip: '10.158.242.195' })
 });
 ```
 
@@ -103,7 +103,7 @@ await fetch('/esp_apply_preset', {
 await fetch('/esp_command', {
     method: 'POST',
     body: JSON.stringify({ 
-        ip: '10.64.220.189',
+        ip: '10.158.242.195',
         params: { var: 'brightness', val: '1' }
     })
 });
@@ -114,22 +114,22 @@ await fetch('/esp_command', {
 ### Python ile Test:
 ```bash
 # Basit bağlantı testi
-python test_esp.py 10.64.220.189
+python test_esp.py 10.158.242.195
 
 # Optimal ayarları uygula
-python test_esp.py 10.64.220.189 --apply-preset
+python test_esp.py 10.158.242.195 --apply-preset
 ```
 
 ### Manuel Test:
 ```bash
 # ESP durum kontrolü
-curl http://10.64.220.189/status
+curl http://10.158.242.195/status
 
 # Çözünürlük değiştir
-curl "http://10.64.220.189/control?var=framesize&val=8"
+curl "http://10.158.242.195/control?var=framesize&val=8"
 
 # Parlaklık ayarla
-curl "http://10.64.220.189/control?var=brightness&val=1"
+curl "http://10.158.242.195/control?var=brightness&val=1"
 ```
 
 ## 📊 Beklenen Performans
