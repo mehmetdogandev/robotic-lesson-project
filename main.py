@@ -6,6 +6,11 @@ Face recognition and emotion detection system
 """
 from flask import Flask, render_template, Response, jsonify, request
 import cv2
+import numpy as np
+import os
+import time
+import uuid
+from werkzeug.utils import secure_filename
 from modules.config import latest_state
 from modules.camera import camera_stream
 from modules.storage import get_captured_images
@@ -267,6 +272,76 @@ def save_event():
         return jsonify({"status": "ok", "image": img_path, "json": json_path}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/analyze_images', methods=['POST'])
+def analyze_images():
+    """Analyze one or more user-provided still images.
+
+    Expects multipart/form-data with files under key 'images' (or 'files').
+    Returns JSON: { results: [ { filename, url, emotions, main_emotion, danger_score, is_thief, thief_prob, error? } ] }
+    """
+    files = request.files.getlist('images') or request.files.getlist('files')
+    if not files:
+        return jsonify({"error": "No images provided (use multipart key 'images')"}), 400
+
+    # Ensure upload directory exists
+    from modules.config import UPLOAD_DIR, EMOTION_DOMINANT_MIN_PERCENT
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    results = []
+    for f in files:
+        if not f or not getattr(f, 'filename', ''):
+            continue
+
+        original_name = secure_filename(f.filename) or 'image'
+        try:
+            raw = f.read()
+            arr = np.frombuffer(raw, dtype=np.uint8)
+            frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            if frame is None:
+                results.append({"filename": original_name, "error": "Görüntü okunamadı"})
+                continue
+
+            # Save a preview copy under static/uploads
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            uid = str(uuid.uuid4())[:8]
+            saved_name = f"upload_{uid}_{ts}.jpg"
+            saved_path = os.path.join(UPLOAD_DIR, saved_name)
+            cv2.imwrite(saved_path, frame)
+            url = f"/static/uploads/{saved_name}"
+
+            # Run independent single-image analysis
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            emotions = face_analysis.analyze_emotions_single(rgb)
+            if not emotions:
+                results.append({"filename": original_name, "url": url, "error": "Duygu analizi yapılamadı"})
+                continue
+
+            # Dominant emotion gating (same idea as realtime)
+            main_emotion = max(emotions, key=emotions.get)
+            if float(emotions.get(main_emotion, 0.0)) < float(EMOTION_DOMINANT_MIN_PERCENT):
+                main_emotion = "neutral"
+
+            danger_score = float(face_analysis.calculate_danger_score(emotions))
+            is_thief, thief_prob = face_analysis.predict_thief_risk(emotions)
+
+            results.append({
+                "filename": original_name,
+                "url": url,
+                "emotions": emotions,
+                "main_emotion": main_emotion,
+                "danger_score": danger_score,
+                "is_thief": bool(is_thief),
+                "thief_prob": float(thief_prob),
+            })
+        except Exception as e:
+            results.append({"filename": original_name, "error": str(e)})
+
+    if not results:
+        return jsonify({"error": "No valid images provided"}), 400
+
+    return jsonify({"results": results}), 200
 
 
 @app.route('/set_camera_source', methods=['POST'])

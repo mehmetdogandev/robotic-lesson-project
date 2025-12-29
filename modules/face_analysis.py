@@ -264,6 +264,54 @@ def analyze_emotions(rgb_frame):
         return None
 
 
+def analyze_emotions_single(rgb_frame):
+    """Analyze emotions for a single still image without touching global history.
+
+    Returns an emotions dict in 0..100 percentages (normalized) or None.
+    """
+    if rgb_frame is None:
+        return None
+
+    try:
+        analysis = DeepFace.analyze(
+            rgb_frame,
+            actions=['emotion'],
+            enforce_detection=False,
+            detector_backend='opencv',
+            align=True,
+        )
+
+        if isinstance(analysis, list):
+            emotions = analysis[0].get('emotion')
+        else:
+            emotions = analysis.get('emotion')
+
+        if not emotions:
+            return None
+
+        # Confidence gating (same threshold as realtime) but without history fallback
+        max_confidence = max(emotions.values()) if emotions else 0.0
+        from modules.config import EMOTION_CONFIDENCE_THRESHOLD
+        if float(max_confidence) < float(EMOTION_CONFIDENCE_THRESHOLD):
+            neutral_emotions = {k: 0.0 for k in emotions.keys()}
+            neutral_emotions['neutral'] = 100.0
+            return neutral_emotions
+
+        # Normalize to total=100 for consistency
+        total = float(sum(emotions.values()))
+        if total > 0:
+            emotions = {k: (float(v) / total) * 100.0 for k, v in emotions.items()}
+        else:
+            # fallback
+            neutral_emotions = {k: 0.0 for k in emotions.keys()}
+            neutral_emotions['neutral'] = 100.0
+            emotions = neutral_emotions
+
+        return emotions
+    except Exception:
+        return None
+
+
 def get_average_emotions():
     """Gelişmiş ağırlıklı ortalama hesaplama.
     

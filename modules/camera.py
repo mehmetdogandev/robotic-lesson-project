@@ -8,7 +8,7 @@ import time
 import uuid
 import mediapipe as mp
 from modules.config import (
-    ANALYSIS_INTERVAL, DANGER_THRESHOLD, emotion_labels, latest_state
+    ANALYSIS_INTERVAL, DANGER_THRESHOLD, emotion_labels, latest_state, DETECTION_ENABLED
 )
 from modules.config import (
     DANGER_COMPONENT_MIN_PERCENT,
@@ -36,7 +36,8 @@ class CameraStream:
     """Camera stream management and frame processing"""
     
     def __init__(self):
-        self.detection_enabled = True
+        # First run: start with detection disabled unless configured otherwise
+        self.detection_enabled = bool(DETECTION_ENABLED)
         self.last_danger_check = 0
         # If remote_ip is set, frames will be pulled from ESP via HTTP
         self.remote_ip = None

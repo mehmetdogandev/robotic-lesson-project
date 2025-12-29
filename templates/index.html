@@ -128,6 +128,13 @@
             gap: 18px;
             margin-top: 18px;
         }
+
+        #uploadCards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 18px;
+            margin-top: 12px;
+        }
         .card {
             background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--card);
             border: 1px solid rgba(255,255,255,0.06);
@@ -165,6 +172,56 @@
         .bar > span { display:block; height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #66e0ff); border-radius:999px; transition: width .8s cubic-bezier(.22,.9,.31,1); box-shadow: 0 0 12px rgba(0,229,255,0.35); }
         .grid { display:grid; grid-template-columns: 1fr; gap:8px; }
 
+        /* Still-image analysis viewer */
+        #uploadViewer {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(2, 6, 23, 0.78);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+        }
+        #uploadViewer .viewer {
+            width: min(1100px, 96vw);
+            max-height: 92vh;
+            overflow: auto;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent), var(--panel);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 16px;
+            box-shadow: 0 30px 80px -30px rgba(0,0,0,0.75);
+        }
+        #uploadViewer .viewerHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(6px);
+        }
+        #uploadViewer .viewerBody {
+            display: grid;
+            grid-template-columns: 1.4fr 0.6fr;
+            gap: 14px;
+            padding: 14px;
+        }
+        @media (max-width: 920px){
+            #uploadViewer .viewerBody { grid-template-columns: 1fr; }
+        }
+        #uploadViewer .viewerImg {
+            width: 100%;
+            height: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+        }
+
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(8px); }
@@ -177,12 +234,17 @@
     <div id="panel">
         <div class="toolbar">
             <input id="ipInput" type="text" placeholder="Kamera IP (örn. 10.158.242.195)" value="10.158.242.195" style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);width:200px">
+            <button id="btnOpenCam" class="btn btn-primary">Kamerayı Aç</button>
             <button id="btnConnect" class="btn btn-primary">Bağlan</button>
             <button id="btnDisconnect" class="btn">Yerel Kamera</button>
             <button id="btnStart" class="btn btn-green">Algılamayı Aç</button>
             <button id="btnStop" class="btn btn-red">Algılamayı Kapat</button>
             <button id="btnSave" class="btn btn-primary">Anlık Kaydı Al</button>
             <button id="refresh" class="btn btn-primary">Paneli Yenile</button>
+
+            <input id="imgFiles" type="file" accept="image/*" multiple style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);width:240px">
+            <button id="btnAnalyzeImages" class="btn btn-primary">Görselleri Analiz Et</button>
+
             <span id="status" class="meta"></span>
             <span id="count" class="meta"></span>
         </div>
@@ -319,7 +381,7 @@
         </div>
         
         <div id="liveArea">
-            <img id="liveImg" class="live" src="{{ url_for('video_feed') }}" width="640" height="480" alt="Canlı Yayın">
+            <img id="liveImg" class="live" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" width="640" height="480" alt="Kamera kapalı">
             <div id="realtimeContainer">
                 <div id="realtime" class="card">
                     <div class="body">
@@ -346,8 +408,59 @@
                 </div>
             </div>
         </div>
+
+        <div style="margin-top:18px;">
+            <div class="stat" style="padding:14px;">
+                <div class="k">Görsel Analizi (Dosyadan)</div>
+                <div class="hint" id="uploadStatus">Birden çok görsel seçip analiz edebilirsiniz.</div>
+                <div id="uploadCards"></div>
+            </div>
+        </div>
         
         <div id="cards"></div>
+    </div>
+
+    <!-- Still-image analysis viewer overlay -->
+    <div id="uploadViewer" role="dialog" aria-modal="true">
+        <div class="viewer">
+            <div class="viewerHeader">
+                <div class="title" id="uvTitle" style="margin:0;">Görsel Analizi</div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                    <span id="uvIndex" class="meta">-</span>
+                    <button id="uvPrev" class="btn">Önceki</button>
+                    <button id="uvNext" class="btn">Sonraki</button>
+                    <button id="uvClose" class="btn btn-red">Kapat</button>
+                </div>
+            </div>
+            <div class="viewerBody">
+                <div>
+                    <img id="uvImg" class="viewerImg" alt="Analiz görseli" />
+                </div>
+                <div>
+                    <div class="card" style="transform:none; animation:none;">
+                        <div class="body">
+                            <div class="title">Sonuç <span id="uvMain" class="badge">-</span></div>
+                            <div class="meta" id="uvMeta">-</div>
+                            <div class="emotions grid" id="uvBars"></div>
+
+                            <div id="uvSecurity" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <span style="font-size:13px; color:var(--muted); font-weight:600;">🛡️ Güvenlik Analizi</span>
+                                    <span id="uvSecBadge" class="badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border-color:rgba(34,197,94,0.3);">GÜVENLİ</span>
+                                </div>
+                                <div style="font-size:11px; color:var(--muted); margin-bottom:4px; display:flex; justify-content:space-between;">
+                                    <span>Hırsızlık Şüphesi</span>
+                                    <span id="uvThiefVal">0%</span>
+                                </div>
+                                <div class="bar" style="background:rgba(255,255,255,0.06);">
+                                    <span id="uvThiefBar" style="width:0%; background:linear-gradient(90deg, #f59e0b, #ef4444); box-shadow:0 0 10px rgba(239,68,68,0.4);"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -366,6 +479,129 @@
         let lastAutoSaveAt = 0;
         let lastAutoSavedTs = '';
         let lastRealtime = null;
+
+        let uploadResults = [];
+        let uploadIndex = 0;
+
+        function openUploadViewer(results, startIndex){
+            uploadResults = Array.isArray(results) ? results : [];
+            uploadIndex = Math.min(Math.max(0, startIndex || 0), Math.max(0, uploadResults.length - 1));
+            const ov = document.getElementById('uploadViewer');
+            if (!ov) return;
+            ov.style.display = 'flex';
+            renderUploadViewer();
+        }
+
+        function closeUploadViewer(){
+            const ov = document.getElementById('uploadViewer');
+            if (!ov) return;
+            ov.style.display = 'none';
+        }
+
+        function renderUploadViewer(){
+            const r = uploadResults[uploadIndex];
+            const img = document.getElementById('uvImg');
+            const title = document.getElementById('uvTitle');
+            const idx = document.getElementById('uvIndex');
+            const mainBadge = document.getElementById('uvMain');
+            const meta = document.getElementById('uvMeta');
+            const bars = document.getElementById('uvBars');
+            const prevBtn = document.getElementById('uvPrev');
+            const nextBtn = document.getElementById('uvNext');
+
+            if (idx) idx.textContent = uploadResults.length ? `${uploadIndex + 1} / ${uploadResults.length}` : '-';
+            if (prevBtn) prevBtn.disabled = uploadIndex <= 0;
+            if (nextBtn) nextBtn.disabled = uploadIndex >= (uploadResults.length - 1);
+
+            if (!r){
+                if (title) title.textContent = 'Görsel Analizi';
+                if (img) img.src = '';
+                if (mainBadge) mainBadge.textContent = '-';
+                if (meta) meta.textContent = '-';
+                if (bars) bars.innerHTML = '';
+                return;
+            }
+
+            if (title) title.textContent = `Görsel Analizi: ${r.filename || '-'} `;
+            if (img) img.src = r.url || '';
+            if (bars) bars.innerHTML = '';
+
+            if (r.error){
+                if (mainBadge) mainBadge.textContent = 'Hata';
+                if (meta) meta.textContent = r.error;
+                return;
+            }
+
+            const em = r.emotions || null;
+            const main = r.main_emotion || (em ? Object.keys(em).reduce((a,b)=> em[a] > em[b] ? a : b) : 'neutral');
+            const badgeColor = emoColors[main] || '#00e5ff';
+            if (mainBadge){
+                mainBadge.textContent = trEmo[main] || main;
+                mainBadge.style.borderColor = badgeColor;
+                mainBadge.style.color = badgeColor;
+                mainBadge.style.boxShadow = `inset 0 0 0 1px rgba(255,255,255,0.04), 0 0 14px ${badgeColor}33`;
+            }
+
+            const dangerScore = (typeof r.danger_score === 'number') ? r.danger_score : 0;
+            const thiefProb = (r.thief_prob || 0) * 100;
+            if (meta) meta.textContent = `Tehlike Skoru: ${pct(dangerScore)}% • Hırsızlık Şüphesi: ${pct(thiefProb)}%`;
+
+            // security badge
+            const secBadge = document.getElementById('uvSecBadge');
+            const thiefVal = document.getElementById('uvThiefVal');
+            const thiefBar = document.getElementById('uvThiefBar');
+            if (thiefVal) thiefVal.textContent = thiefProb.toFixed(1) + '%';
+            if (thiefBar) thiefBar.style.width = Math.min(100, Math.max(0, thiefProb)) + '%';
+            if (secBadge){
+                if (r.is_thief){
+                    secBadge.textContent = 'RİSKLİ';
+                    secBadge.style.background = 'rgba(239,68,68,0.15)';
+                    secBadge.style.color = '#f87171';
+                    secBadge.style.borderColor = 'rgba(239,68,68,0.3)';
+                    secBadge.style.boxShadow = '0 0 15px rgba(239,68,68,0.2)';
+                } else if (dangerScore >= 90){
+                    secBadge.textContent = 'DİKKAT';
+                    secBadge.style.background = 'rgba(245,158,11,0.15)';
+                    secBadge.style.color = '#fbbf24';
+                    secBadge.style.borderColor = 'rgba(245,158,11,0.3)';
+                    secBadge.style.boxShadow = '0 0 15px rgba(245,158,11,0.15)';
+                } else {
+                    secBadge.textContent = 'GÜVENLİ';
+                    secBadge.style.background = 'rgba(34,197,94,0.15)';
+                    secBadge.style.color = '#4ade80';
+                    secBadge.style.borderColor = 'rgba(34,197,94,0.3)';
+                    secBadge.style.boxShadow = 'none';
+                }
+            }
+
+            if (em && bars){
+                const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
+                order.forEach(k => {
+                    if (typeof em[k] === 'undefined') return;
+                    const row = document.createElement('div');
+                    row.className = 'emo-row';
+                    const label = document.createElement('span');
+                    label.className = 'label';
+                    label.textContent = trEmo[k] || k;
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    const fill = document.createElement('span');
+                    const color = emoColors[k] || '#66e0ff';
+                    fill.style.background = color;
+                    fill.style.boxShadow = `0 0 12px ${color}66`;
+                    fill.style.width = '0%';
+                    const target = Math.min(100, Math.max(0, em[k]));
+                    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ fill.style.width = target + '%'; }); });
+                    bar.appendChild(fill);
+                    const value = document.createElement('span');
+                    value.textContent = pct(em[k]) + '%';
+                    row.appendChild(label);
+                    row.appendChild(bar);
+                    row.appendChild(value);
+                    bars.appendChild(row);
+                });
+            }
+        }
 
         function nowMs(){ return Date.now ? Date.now() : (new Date()).getTime(); }
 
@@ -567,6 +803,128 @@
                 rtTimer = null;
             }
         }
+
+        function openLocalCamera(){
+            const img = document.getElementById('liveImg');
+            img.src = `{{ url_for('video_feed') }}`;
+            document.getElementById('status').textContent = 'Kamera açıldı (yerel)';
+        }
+
+        function renderUploadResults(results){
+            const cont = document.getElementById('uploadCards');
+            if (!cont) return;
+            cont.innerHTML = '';
+
+            (results || []).forEach((r, i) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.animationDelay = `${i * 0.05}s`;
+
+                const img = document.createElement('img');
+                img.src = r.url || '';
+                img.alt = r.filename || 'upload';
+                card.appendChild(img);
+
+                const body = document.createElement('div');
+                body.className = 'body';
+
+                const title = document.createElement('div');
+                title.className = 'title';
+
+                if (r.error){
+                    title.textContent = `Hata: ${r.filename || '-'} `;
+                    const meta = document.createElement('div');
+                    meta.className = 'meta';
+                    meta.textContent = r.error;
+                    body.appendChild(title);
+                    body.appendChild(meta);
+                    card.appendChild(body);
+                    cont.appendChild(card);
+                    return;
+                }
+
+                const main = r.main_emotion || 'neutral';
+                const badgeColor = emoColors[main] || '#00e5ff';
+                const badge = `<span class="badge" style="border-color:${badgeColor}; color:${badgeColor}; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 0 14px ${badgeColor}33;">${trEmo[main] || main}</span>`;
+                title.innerHTML = `${r.filename || 'Görsel'} ${badge}`;
+
+                const dangerScore = (typeof r.danger_score === 'number') ? r.danger_score : 0;
+                const thiefProbPct = (r.thief_prob || 0) * 100;
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.textContent = `Tehlike Skoru: ${pct(dangerScore)}% • Hırsızlık Şüphesi: ${pct(thiefProbPct)}%`;
+
+                const row2 = document.createElement('div');
+                row2.className = 'row2';
+                row2.innerHTML = `${r.is_thief ? '<span class="chip chip-risk">RİSKLİ</span>' : '<span class="chip chip-info">ANALİZ</span>'}`;
+
+                const emotionsEl = document.createElement('div');
+                emotionsEl.className = 'emotions grid';
+                const em = r.emotions || null;
+                if (em){
+                    const order = ['angry','fear','disgust','sad','surprise','happy','neutral'];
+                    order.forEach(k => {
+                        if (typeof em[k] === 'undefined') return;
+                        const row = document.createElement('div');
+                        row.className = 'emo-row';
+                        const label = document.createElement('span');
+                        label.className = 'label';
+                        label.textContent = trEmo[k] || k;
+                        const bar = document.createElement('div');
+                        bar.className = 'bar';
+                        const fill = document.createElement('span');
+                        const color = emoColors[k] || '#66e0ff';
+                        fill.style.background = color;
+                        fill.style.boxShadow = `0 0 12px ${color}66`;
+                        fill.style.width = '0%';
+                        const target = Math.min(100, Math.max(0, em[k]));
+                        requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ fill.style.width = target + '%'; }); });
+                        bar.appendChild(fill);
+                        const value = document.createElement('span');
+                        value.textContent = pct(em[k]) + '%';
+                        row.appendChild(label);
+                        row.appendChild(bar);
+                        row.appendChild(value);
+                        emotionsEl.appendChild(row);
+                    });
+                }
+
+                body.appendChild(title);
+                body.appendChild(meta);
+                body.appendChild(row2);
+                body.appendChild(emotionsEl);
+                card.appendChild(body);
+                cont.appendChild(card);
+            });
+        }
+
+        async function analyzeSelectedImages(){
+            const input = document.getElementById('imgFiles');
+            const st = document.getElementById('uploadStatus');
+            const files = input && input.files ? Array.from(input.files) : [];
+            if (!files.length) return alert('Lütfen en az 1 görsel seçin');
+
+            const fd = new FormData();
+            files.forEach(f => fd.append('images', f));
+            if (st) st.textContent = `Analiz ediliyor... (${files.length} görsel)`;
+
+            try {
+                const res = await fetch('/analyze_images', { method: 'POST', body: fd });
+                const out = await res.json();
+                if (!res.ok) {
+                    if (st) st.textContent = out.error || 'Analiz hatası';
+                    return alert(out.error || 'Analiz hatası');
+                }
+                renderUploadResults(out.results || []);
+                if (st) st.textContent = `Analiz tamamlandı: ${(out.results || []).length} sonuç`;
+
+                // Otomatik "ekran" aç: sonuçlar arasında geçiş
+                openUploadViewer(out.results || [], 0);
+            } catch (e) {
+                if (st) st.textContent = 'Analiz sırasında hata oluştu';
+                alert('Analiz sırasında hata oluştu');
+            }
+        }
         async function updateStatus(){
             const res = await fetch('/status');
             const data = await res.json();
@@ -750,6 +1108,7 @@
         document.getElementById('refresh').onclick = loadPanel;
         document.getElementById('btnStart').onclick = () => setDetection(true);
         document.getElementById('btnStop').onclick = () => setDetection(false);
+        document.getElementById('btnOpenCam').onclick = openLocalCamera;
         document.getElementById('btnSave').onclick = async () => {
             try {
                 const out = await saveSnapshot('manual');
@@ -780,10 +1139,10 @@
         }
         
         function disconnectStream(){
-            // revert to local/default camera (server-side)
+            // "Kamera kapalı" duruma dön (stream kapansın)
             const img = document.getElementById('liveImg');
-            img.src = `{{ url_for('video_feed') }}`;
-            document.getElementById('status').textContent = `Yerel kameraya geçildi`;
+            img.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+            document.getElementById('status').textContent = `Kamera kapatıldı`;
             
             // Hide ESP controls
             currentESPip = null;
@@ -792,6 +1151,23 @@
         
         document.getElementById('btnConnect').onclick = connectStream;
         document.getElementById('btnDisconnect').onclick = disconnectStream;
+        document.getElementById('btnAnalyzeImages').onclick = analyzeSelectedImages;
+
+        // Viewer controls
+        document.getElementById('uvClose').onclick = closeUploadViewer;
+        document.getElementById('uvPrev').onclick = () => { if (uploadIndex > 0) { uploadIndex -= 1; renderUploadViewer(); } };
+        document.getElementById('uvNext').onclick = () => { if (uploadIndex < uploadResults.length - 1) { uploadIndex += 1; renderUploadViewer(); } };
+        document.getElementById('uploadViewer').addEventListener('click', (e) => {
+            // only close when clicking backdrop (not inside viewer)
+            if (e.target && e.target.id === 'uploadViewer') closeUploadViewer();
+        });
+        document.addEventListener('keydown', (e) => {
+            const ov = document.getElementById('uploadViewer');
+            if (!ov || ov.style.display !== 'flex') return;
+            if (e.key === 'Escape') return closeUploadViewer();
+            if (e.key === 'ArrowLeft') { if (uploadIndex > 0) { uploadIndex -= 1; renderUploadViewer(); } }
+            if (e.key === 'ArrowRight') { if (uploadIndex < uploadResults.length - 1) { uploadIndex += 1; renderUploadViewer(); } }
+        });
         
         // ESP Camera Parameter Control
         async function setESPParam(param, value) {
