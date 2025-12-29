@@ -14,7 +14,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Analysis parameters
 ANALYSIS_INTERVAL = 3     # analyze every 3 frames (daha sık analiz için optimize edildi)
 HISTORY_SIZE = 5           # average of last 5 analyses (daha fazla smoothing)
-DANGER_THRESHOLD = 85.0     # danger threshold (angry+fear+disgust sum) - yanlış pozitifleri azaltmak için yükseltildi
+DANGER_THRESHOLD = 60.0     # danger threshold (angry+fear+disgust sum)
 FACE_SIMILARITY_THRESHOLD = 0.6  # face similarity threshold (0-1 range, lower=stricter)
 
 # Emotion analysis optimization
