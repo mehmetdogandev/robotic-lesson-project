@@ -7,10 +7,14 @@ import os
 CAPTURE_DIR = "static/captured"
 os.makedirs(CAPTURE_DIR, exist_ok=True)
 
+# Upload directory for user-provided still images (UI multi-image analysis)
+UPLOAD_DIR = "static/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 # Analysis parameters
 ANALYSIS_INTERVAL = 3     # analyze every 3 frames (daha sık analiz için optimize edildi)
 HISTORY_SIZE = 5           # average of last 5 analyses (daha fazla smoothing)
-DANGER_THRESHOLD = 85.0     # danger threshold (angry+fear+disgust sum) - yanlış pozitifleri azaltmak için yükseltildi
+DANGER_THRESHOLD = 60.0     # danger threshold (angry+fear+disgust sum)
 FACE_SIMILARITY_THRESHOLD = 0.6  # face similarity threshold (0-1 range, lower=stricter)
 
 # Emotion analysis optimization
@@ -20,7 +24,7 @@ EMOTION_CONFIDENCE_THRESHOLD = 50.0  # minimum emotion confidence to consider va
 EMOTION_DOMINANT_MIN_PERCENT = 40.0  # dominant emotion bu değerin altındaysa 'neutral' say (belirsizlik)
 
 # Thief model threshold
-THIEF_PROB_THRESHOLD = 0.75  # modelin 'hırsız' demesi için minimum olasılık (biraz daha hassas)
+THIEF_PROB_THRESHOLD = 0.70  # modelin 'hırsız' demesi için minimum olasılık (biraz daha hassas)
 
 # Danger boolean için ek koşullar
 DANGER_COMPONENT_MIN_PERCENT = 35.0  # angry/fear/disgust içinden sayılacak minimum oran
@@ -40,8 +44,8 @@ MODEL_RISK_GATING_MIN_PERCENT = 25.0
 DANGER_PERSISTENCE_SECONDS = 1.5  # koşul en az bu süre devam ederse 'risk' say
 DANGER_COOLDOWN_SECONDS = 3.0     # risk tetiklendikten sonra en az bu süre 'aktif' tut
 
-# Detection status
-DETECTION_ENABLED = True
+# Detection status (first run: disabled)
+DETECTION_ENABLED = False
 
 # Emotion labels (Turkish)
 emotion_labels = {
